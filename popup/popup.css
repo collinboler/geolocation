@@ -1,7 +1,7 @@
 /* Set the width and height for portrait orientation */
 body {
-    width: 300px;  /* Portrait width */
-    height: 100; /* Portrait height */
+    width: 250px;  /* Portrait width */
+    height: 75; /* Portrait height */
     margin: 0;
     font-family: Arial, sans-serif;
 }
@@ -10,7 +10,45 @@ h1 {
     text-align: center;
 }
 
+
+
 #coords {
     color: blue;
-    font-size: 14px;
+    font-size: 12px;
 }
+#zoom-controls {
+    text-align: center; /* Center the buttons */
+}
+
+#coords-area {
+    display: flex; /* Use flexbox to align elements horizontally */
+    align-items: center; /* Vertically align the elements */
+    gap: 7px 
+}
+#location-area {
+    display: flex; /* Use flexbox to align elements horizontally */
+    align-items: center; /* Vertically align the elements */
+    gap: 7px 
+}
+#save-api-key-button {
+    font-size: 12px;
+}
+#capture-button {
+    background-color: green;    /* Make the button red */
+    color: white;             /* Text color */
+    padding: 10px 20px;       /* Add some padding */
+    border: none;             /* Remove default borders */
+    border-radius: 5px;       /* Optional: make the corners rounded */
+    font-size: 16px;          /* Adjust text size */
+    cursor: pointer;          /* Change cursor to pointer on hover */
+    display: block;           /* Make the button behave as a block element */
+    margin:  auto;        /* Center the button */
+    text-align: center;       /* Center the text inside the button */
+}
+
+/*
+#zoom-controls button {
+  
+    font-size: 18px;
+}
+*/

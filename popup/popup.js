@@ -34,10 +34,10 @@ document.addEventListener('DOMContentLoaded', () => {
     // Load the last generated location words and coordinates from storage
     chrome.storage.local.get(['locationWords', 'coords'], (result) => {
         if (result.locationWords) {
-            locationWordsDiv.textContent = `Location: ${result.locationWords}`;
+            locationWordsDiv.textContent = `${result.locationWords}`;
         }
         if (result.coords) {
-            coordsDiv.textContent = `Coords: ${result.coords.lat}, ${result.coords.lng}`;
+            coordsDiv.textContent = `${result.coords.lat}, ${result.coords.lng}`;
             updateMapIframe(result.coords.lat, result.coords.lng, zoomLevel);
         }
     });
@@ -209,14 +209,14 @@ function toggleCoordsVisibility(showCoords) {
         chrome.storage.local.set({ locationWords: parsedLocation }, () => {
           console.log('Location words saved:', parsedLocation);
         });
-        document.getElementById('location-words').textContent = `Location: ${parsedLocation}`;
+        document.getElementById('location-words').textContent = `${parsedLocation}`;
       }
 
       if (coords) {
         chrome.storage.local.set({ coords: coords }, () => {
           console.log('Coordinates saved:', coords);
         });
-        document.getElementById('coords').textContent = `Coords: ${coords.lat}, ${coords.lng}`;
+        document.getElementById('coords').textContent = `${coords.lat}, ${coords.lng}`;
 
         // Update the Google Maps iframe with the coordinates and marker
         updateMapIframe(coords.lat, coords.lng, 7); /* changed */
