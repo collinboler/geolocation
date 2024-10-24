@@ -1,0 +1,26 @@
+{
+    "manifest_version": 3,
+    "name": "Location Finder",
+    "version": "1.0",
+    "description": "Captures a screenshot and finds its location.",
+    "permissions": [
+        "activeTab",
+        "scripting",
+        "storage",
+        "tabs"
+    ],
+    "host_permissions": [
+        "https://api.openai.com/*",
+        "https://maps.googleapis.com/*",
+         "https://api.cloudinary.com/*"
+    ],
+   
+    "action" : {
+      "default_popup": "popup/popup.html",
+      "default_icon": {
+        "16": "images/geolocationbot.png"
+      }
+    }
+  }
+ 
+}

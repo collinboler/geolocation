@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Synonym Suggester</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            width: 300px;
+            padding: 10px;
+        }
+        input, textarea {
+            width: 100%;
+            margin-bottom: 10px;
+            box-sizing: border-box;
+        }
+        button {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 10px;
+        }
+        #result {
+            margin-top: 10px;
+            white-space: pre-wrap;
+        }
+    </style>
+</head>
+<body>
+    <h2>Synonym Suggester</h2>
+    <input type="password" id="apiKey" placeholder="OpenAI API Key">
+    <button id="saveApiKey">Save API Key</button>
+    <input type="text" id="word" placeholder="Specific Word">
+    <textarea id="sentence" placeholder="Specific Sentence"></textarea>
+    <button id="submit">Get Synonyms</button>
+    <textarea id="result" placeholder="Synonyms will appear here..." rows="5"></textarea>
+
+
+    <script src="popup.js"></script>
+</body>
+</html>
