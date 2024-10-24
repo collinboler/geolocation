@@ -8,37 +8,38 @@ document.addEventListener('DOMContentLoaded', () => {
     const mapIframe = document.getElementById('map-iframe');
     const zoomInButton = document.getElementById('zoom-in');  /* changed */
     const zoomOutButton = document.getElementById('zoom-out'); /* changed */
+    const showCoordsCheckbox = document.getElementById('show-coords-checkbox');  // Added
+
     
     let zoomLevel = 5; /* changed */
 
-    // Load API key and last zoom level from storage
-    // Load API key and last zoom level from storage
-    chrome.storage.local.get(['openaiApiKey', 'zoomLevel'], (result) => {
+    
+    // Load API key, zoom level, and show-coords state from storage
+    chrome.storage.local.get(['openaiApiKey', 'zoomLevel', 'showCoords'], (result) => {
         if (result.openaiApiKey) {
-          apiKeyInput.value = result.openaiApiKey;
+            apiKeyInput.value = result.openaiApiKey;
         }
-        if (result.zoomLevel !== undefined) {  // Check if zoomLevel exists in storage
-          zoomLevel = result.zoomLevel;
+        if (result.zoomLevel !== undefined) {
+            zoomLevel = result.zoomLevel;
+        }
+        if (result.showCoords !== undefined) {
+            showCoordsCheckbox.checked = result.showCoords;
+            toggleCoordsVisibility(result.showCoords); // Update visibility
         } else {
-          // If no zoom level is found, set it to 7 and store it
-          chrome.storage.local.set({ zoomLevel: zoomLevel }, () => {  /* changed */
-            console.log('Default zoom level set to 7');  /* changed */
-          });
+            showCoordsCheckbox.checked = false;  // Default is unchecked
+            toggleCoordsVisibility(false); // Start with coords hidden
         }
-      });
+    });
 
     // Load the last generated location words and coordinates from storage
     chrome.storage.local.get(['locationWords', 'coords'], (result) => {
-      if (result.locationWords) {
-        locationWordsDiv.textContent = `Location: ${result.locationWords}`;
-      }
-      if (result.coords) {
-        coordsDiv.textContent = `Coords: ${result.coords.lat}, ${result.coords.lng}`;
-        
-        // Update the Google Maps iframe with the coordinates and marker
-        
-        updateMapIframe(result.coords.lat, result.coords.lng, 7); /* changed */
-      }
+        if (result.locationWords) {
+            locationWordsDiv.textContent = `Location: ${result.locationWords}`;
+        }
+        if (result.coords) {
+            coordsDiv.textContent = `Coords: ${result.coords.lat}, ${result.coords.lng}`;
+            updateMapIframe(result.coords.lat, result.coords.lng, zoomLevel);
+        }
     });
 
     saveApiKeyButton.addEventListener('click', () => {
@@ -63,6 +64,14 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     });
 
+        // Toggle coordinates display when checkbox is changed
+        showCoordsCheckbox.addEventListener('change', () => {
+            const showCoords = showCoordsCheckbox.checked;
+            chrome.storage.local.set({ showCoords: showCoords }, () => {
+                toggleCoordsVisibility(showCoords);
+            });
+        });
+
     // Zoom In button event listener /* changed */
     zoomInButton.addEventListener('click', () => {
       if (zoomLevel < 21) {  // Max zoom level for Google Maps is 21 /* changed */
@@ -79,6 +88,17 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     });
   });
+
+  // Function to toggle the visibility of coordinates based on the checkbox state
+function toggleCoordsVisibility(showCoords) {
+    const coordsDiv = document.getElementById('coords');
+    if (showCoords) {
+        coordsDiv.style.display = 'block';  // Show the coordinates
+    } else {
+        coordsDiv.style.display = 'none';  // Hide the coordinates
+    }
+}
+
 
   function captureScreen(apiKey) {
     chrome.tabs.captureVisibleTab(null, { format: 'png' }, (dataUrl) => {
