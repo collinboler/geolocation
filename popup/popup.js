@@ -6,11 +6,18 @@ document.addEventListener('DOMContentLoaded', () => {
     const locationWordsDiv = document.getElementById('location-words');
     const coordsDiv = document.getElementById('coords');
     const mapIframe = document.getElementById('map-iframe');
+    const zoomInButton = document.getElementById('zoom-in');  /* changed */
+    const zoomOutButton = document.getElementById('zoom-out'); /* changed */
+    
+    let zoomLevel = 10; /* changed */
 
-    // Load API key from storage
-    chrome.storage.local.get(['openaiApiKey'], (result) => {
+    // Load API key and last zoom level from storage
+    chrome.storage.local.get(['openaiApiKey', 'zoomLevel'], (result) => {
       if (result.openaiApiKey) {
         apiKeyInput.value = result.openaiApiKey;
+      }
+      if (result.zoomLevel) {
+        zoomLevel = result.zoomLevel;
       }
     });
 
@@ -22,8 +29,8 @@ document.addEventListener('DOMContentLoaded', () => {
       if (result.coords) {
         coordsDiv.textContent = `Coords: ${result.coords.lat}, ${result.coords.lng}`;
         
-        // Update the Google Maps iframe with the coordinates, encoding the URL properly
-        updateMapIframe(result.coords.lat, result.coords.lng); /* changed */
+        // Update the Google Maps iframe with the coordinates and marker
+        updateMapIframe(result.coords.lat, result.coords.lng, zoomLevel); /* changed */
       }
     });
 
@@ -47,6 +54,22 @@ document.addEventListener('DOMContentLoaded', () => {
           statusDiv.textContent = 'Please enter your OpenAI API Key.';
         }
       });
+    });
+
+    // Zoom In button event listener /* changed */
+    zoomInButton.addEventListener('click', () => {
+      if (zoomLevel < 21) {  // Max zoom level for Google Maps is 21 /* changed */
+        zoomLevel++;
+        updateZoomLevel(zoomLevel);
+      }
+    });
+
+    // Zoom Out button event listener /* changed */
+    zoomOutButton.addEventListener('click', () => {
+      if (zoomLevel > 0) {  // Min zoom level for Google Maps is 0 /* changed */
+        zoomLevel--;
+        updateZoomLevel(zoomLevel);
+      }
     });
   });
 
@@ -166,8 +189,8 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         document.getElementById('coords').textContent = `Coords: ${coords.lat}, ${coords.lng}`;
 
-        // Update the Google Maps iframe with the coordinates
-        updateMapIframe(coords.lat, coords.lng); /* changed */
+        // Update the Google Maps iframe with the coordinates and marker
+        updateMapIframe(coords.lat, coords.lng, zoomLevel); /* changed */
       } else {
         document.getElementById('status').textContent = 'Could not parse coordinates.';
       }
@@ -178,10 +201,23 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  function updateMapIframe(lat, lng) { /* changed */
+  function updateMapIframe(lat, lng, zoomLevel) { /* changed */
     const apiKey = 'AIzaSyBTCrEPAQbgMfY1brzBn7Zcd3DlvaXwsSI'; // Use your actual Google Maps API key here
-    const src = `https://www.google.com/maps/embed/v1/place?key=${apiKey}&q=${encodeURIComponent(lat)},${encodeURIComponent(lng)}&zoom=6.5`; /* changed */
+    const src = `https://www.google.com/maps/embed/v1/place?key=${apiKey}&q=${encodeURIComponent(lat)},${encodeURIComponent(lng)}&zoom=${zoomLevel}`;
     document.getElementById('map-iframe').src = src;
+  }
+
+  function updateZoomLevel(zoomLevel) { /* changed */
+    chrome.storage.local.get(['coords'], (result) => {
+      if (result.coords) {
+        // Update the Google Maps iframe with the new zoom level
+        updateMapIframe(result.coords.lat, result.coords.lng, zoomLevel);
+        // Save the new zoom level in local storage
+        chrome.storage.local.set({ zoomLevel: zoomLevel }, () => {
+          console.log('Zoom level saved:', zoomLevel);
+        });
+      }
+    });
   }
 
   function parseCoordinates(locationText) {
