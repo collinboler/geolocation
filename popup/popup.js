@@ -180,7 +180,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function updateMapIframe(lat, lng) { /* changed */
     const apiKey = 'AIzaSyBTCrEPAQbgMfY1brzBn7Zcd3DlvaXwsSI'; // Use your actual Google Maps API key here
-    const src = `https://www.google.com/maps/embed/v1/view?key=${apiKey}&center=${encodeURIComponent(lat)},${encodeURIComponent(lng)}&zoom=7`;
+    const src = `https://www.google.com/maps/embed/v1/place?key=${apiKey}&q=${encodeURIComponent(lat)},${encodeURIComponent(lng)}&zoom=6.5`; /* changed */
     document.getElementById('map-iframe').src = src;
   }
 
