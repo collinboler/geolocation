@@ -12,14 +12,20 @@ document.addEventListener('DOMContentLoaded', () => {
     let zoomLevel = 5; /* changed */
 
     // Load API key and last zoom level from storage
+    // Load API key and last zoom level from storage
     chrome.storage.local.get(['openaiApiKey', 'zoomLevel'], (result) => {
-      if (result.openaiApiKey) {
-        apiKeyInput.value = result.openaiApiKey;
-      }
-      if (result.zoomLevel) {
-        zoomLevel = result.zoomLevel;
-      }
-    });
+        if (result.openaiApiKey) {
+          apiKeyInput.value = result.openaiApiKey;
+        }
+        if (result.zoomLevel !== undefined) {  // Check if zoomLevel exists in storage
+          zoomLevel = result.zoomLevel;
+        } else {
+          // If no zoom level is found, set it to 7 and store it
+          chrome.storage.local.set({ zoomLevel: zoomLevel }, () => {  /* changed */
+            console.log('Default zoom level set to 7');  /* changed */
+          });
+        }
+      });
 
     // Load the last generated location words and coordinates from storage
     chrome.storage.local.get(['locationWords', 'coords'], (result) => {
@@ -30,7 +36,8 @@ document.addEventListener('DOMContentLoaded', () => {
         coordsDiv.textContent = `Coords: ${result.coords.lat}, ${result.coords.lng}`;
         
         // Update the Google Maps iframe with the coordinates and marker
-        updateMapIframe(result.coords.lat, result.coords.lng, zoomLevel); /* changed */
+        
+        updateMapIframe(result.coords.lat, result.coords.lng, 7); /* changed */
       }
     });
 
@@ -100,8 +107,10 @@ document.addEventListener('DOMContentLoaded', () => {
           content: [
             {
               type: "text",
-              text: "Guess this location's exact coordinates, and only output the coordinates of your best guess followed by the location's name or general regional location. \
-              your response should look something like this for example: 39, 94.5 Kansas City, Kansas. Answer as fast as possible!!"
+              text: "Guess this location's exact coordinates, and only output the coordinates of your best guess followed by the location's name or general regional location.  \
+              This is for the game geoguessr, so use all the metas that a pro would use, and answer asap! \
+              your response should look something like this for example: 40.348600, -74.659300 Nassau Hall, Princeton, New Jersey, United States."
+
             },
             {
               type: "image_url",
@@ -190,7 +199,7 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('coords').textContent = `Coords: ${coords.lat}, ${coords.lng}`;
 
         // Update the Google Maps iframe with the coordinates and marker
-        updateMapIframe(coords.lat, coords.lng, zoomLevel); /* changed */
+        updateMapIframe(coords.lat, coords.lng, 7); /* changed */
       } else {
         document.getElementById('status').textContent = 'Could not parse coordinates.';
       }
@@ -203,6 +212,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function updateMapIframe(lat, lng, zoomLevel) { /* changed */
     const apiKey = 'AIzaSyBTCrEPAQbgMfY1brzBn7Zcd3DlvaXwsSI'; // Use your actual Google Maps API key here
+    if (!zoomLevel) zoomLevel = 7; // case for when zoom level undefined, new generation
     const src = `https://www.google.com/maps/embed/v1/place?key=${apiKey}&q=${encodeURIComponent(lat)},${encodeURIComponent(lng)}&zoom=${zoomLevel}`;
     document.getElementById('map-iframe').src = src;
   }
@@ -211,6 +221,7 @@ document.addEventListener('DOMContentLoaded', () => {
     chrome.storage.local.get(['coords'], (result) => {
       if (result.coords) {
         // Update the Google Maps iframe with the new zoom level
+        
         updateMapIframe(result.coords.lat, result.coords.lng, zoomLevel);
         // Save the new zoom level in local storage
         chrome.storage.local.set({ zoomLevel: zoomLevel }, () => {
