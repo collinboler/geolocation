@@ -1,0 +1,16 @@
+/* Set the width and height for portrait orientation */
+body {
+    width: 300px;  /* Portrait width */
+    height: 100; /* Portrait height */
+    margin: 0;
+    font-family: Arial, sans-serif;
+}
+
+h1 {
+    text-align: center;
+}
+
+#coords {
+    color: blue;
+    font-size: 14px;
+}
