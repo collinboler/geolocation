@@ -9,7 +9,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const zoomInButton = document.getElementById('zoom-in');  /* changed */
     const zoomOutButton = document.getElementById('zoom-out'); /* changed */
     
-    let zoomLevel = 10; /* changed */
+    let zoomLevel = 5; /* changed */
 
     // Load API key and last zoom level from storage
     chrome.storage.local.get(['openaiApiKey', 'zoomLevel'], (result) => {
