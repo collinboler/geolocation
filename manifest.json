@@ -1,6 +1,6 @@
 {
     "manifest_version": 3,
-    "name": "Location Finder",
+    "name": "Geo Locator",
     "version": "1.0",
     "description": "Captures a screenshot and finds its location.",
     "permissions": [
@@ -23,4 +23,3 @@
     }
   }
  
-}
