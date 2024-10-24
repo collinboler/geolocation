@@ -3,6 +3,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const saveApiKeyButton = document.getElementById('save-api-key-button');
     const apiKeyInput = document.getElementById('api-key-input');
     const statusDiv = document.getElementById('status');
+    const locationDiv = document.getElementById('location-name'); /* changed */
+
   
     // Load API key from storage
     chrome.storage.local.get(['openaiApiKey'], (result) => {
@@ -10,6 +12,14 @@ document.addEventListener('DOMContentLoaded', () => {
         apiKeyInput.value = result.openaiApiKey;
       }
     });
+
+      // Load the last generated location from storage
+      chrome.storage.local.get(['lastLocation'], (result) => { 
+        if (result.lastLocation) {
+          locationDiv.textContent = result.lastLocation; 
+        }
+      });
+  
   
     saveApiKeyButton.addEventListener('click', () => {
       const apiKey = apiKeyInput.value.trim();
@@ -140,6 +150,13 @@ document.addEventListener('DOMContentLoaded', () => {
   
     if (locationName) {
       document.getElementById('location-name').textContent = locationName;
+      
+      // Save the last generated location to storage
+      chrome.storage.local.set({ lastLocation: locationName }, () => { /* changed */
+        console.log('Last location saved:', locationName); /* changed */
+      }); /* changed */
+
+
       document.getElementById('status').textContent = '';
   
       // Convert location name to coordinates
@@ -148,42 +165,3 @@ document.addEventListener('DOMContentLoaded', () => {
       document.getElementById('status').textContent = 'Could not extract location name.';
     }
   }
-  /*
-  function geocodeLocationName(locationName) {
-    const geocodeUrl = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(locationName)}&key=YOUR_GOOGLE_MAPS_API_KEY`;
-  
-    fetch(geocodeUrl)
-      .then(response => response.json())
-      .then(data => {
-        if (data.status === 'OK' && data.results.length > 0) {
-          const location = data.results[0].geometry.location;
-          initMap(location.lat, location.lng);
-          document.getElementById('status').textContent = 'Location found and displayed on map.';
-        } else {
-          document.getElementById('status').textContent = 'Could not geocode the location name.';
-        }
-      })
-      .catch(error => {
-        document.getElementById('status').textContent = 'Error fetching coordinates.';
-      });
-  }
-
-  
-  function initMap(latitude, longitude) {
-    const mapDiv = document.getElementById('map');
-    mapDiv.style.display = 'block';
-  
-    const location = { lat: latitude, lng: longitude };
-  
-    const map = new google.maps.Map(mapDiv, {
-      center: location,
-      zoom: 8
-    });
-  
-    new google.maps.Marker({
-      position: location,
-      map: map
-    });
-  }
- */
-  
