@@ -5,7 +5,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const statusDiv = document.getElementById('status');
     const locationWordsDiv = document.getElementById('location-words');
     const coordsDiv = document.getElementById('coords');
-    const mapIframe = document.getElementById('map-iframe'); /* changed */
+    const mapIframe = document.getElementById('map-iframe');
 
     // Load API key from storage
     chrome.storage.local.get(['openaiApiKey'], (result) => {
@@ -21,9 +21,9 @@ document.addEventListener('DOMContentLoaded', () => {
       }
       if (result.coords) {
         coordsDiv.textContent = `Coords: ${result.coords.lat}, ${result.coords.lng}`;
-
-        // Update the Google Maps iframe with the coordinates
-        mapIframe.src = `https://www.google.com/maps/embed/v1/view?key=AIzaSyBTCrEPAQbgMfY1brzBn7Zcd3DlvaXwsSI&center=${result.coords.lat},${result.coords.lng}&zoom=10`; /* changed */
+        
+        // Update the Google Maps iframe with the coordinates, encoding the URL properly
+        updateMapIframe(result.coords.lat, result.coords.lng); /* changed */
       }
     });
 
@@ -167,7 +167,7 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('coords').textContent = `Coords: ${coords.lat}, ${coords.lng}`;
 
         // Update the Google Maps iframe with the coordinates
-        document.getElementById('map-iframe').src = `https://www.google.com/maps/embed/v1/view?key=YOUR_GOOGLE_MAPS_API_KEY&center=${coords.lat},${coords.lng}&zoom=10`; /* changed */
+        updateMapIframe(coords.lat, coords.lng); /* changed */
       } else {
         document.getElementById('status').textContent = 'Could not parse coordinates.';
       }
@@ -176,6 +176,12 @@ document.addEventListener('DOMContentLoaded', () => {
     } else {
       document.getElementById('status').textContent = 'Could not extract location name.';
     }
+  }
+
+  function updateMapIframe(lat, lng) { /* changed */
+    const apiKey = 'AIzaSyBTCrEPAQbgMfY1brzBn7Zcd3DlvaXwsSI'; // Use your actual Google Maps API key here
+    const src = `https://www.google.com/maps/embed/v1/view?key=${apiKey}&center=${encodeURIComponent(lat)},${encodeURIComponent(lng)}&zoom=10`;
+    document.getElementById('map-iframe').src = src;
   }
 
   function parseCoordinates(locationText) {
