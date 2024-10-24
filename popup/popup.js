@@ -3,9 +3,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const saveApiKeyButton = document.getElementById('save-api-key-button');
     const apiKeyInput = document.getElementById('api-key-input');
     const statusDiv = document.getElementById('status');
-    const locationDiv = document.getElementById('location-name'); /* changed */
+    const locationWordsDiv = document.getElementById('location-words'); /* changed */
+    const coordsDiv = document.getElementById('coords'); /* changed */
 
-  
     // Load API key from storage
     chrome.storage.local.get(['openaiApiKey'], (result) => {
       if (result.openaiApiKey) {
@@ -13,14 +13,16 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     });
 
-      // Load the last generated location from storage
-      chrome.storage.local.get(['lastLocation'], (result) => { 
-        if (result.lastLocation) {
-          locationDiv.textContent = result.lastLocation; 
-        }
-      });
-  
-  
+    // Load the last generated location words and coordinates from storage /* changed */
+    chrome.storage.local.get(['locationWords', 'coords'], (result) => { /* changed */
+      if (result.locationWords) {
+        locationWordsDiv.textContent = `Location: ${result.locationWords}`; /* changed */
+      }
+      if (result.coords) {
+        coordsDiv.textContent = `Coords: ${result.coords.lat}, ${result.coords.lng}`; /* changed */
+      }
+    });
+
     saveApiKeyButton.addEventListener('click', () => {
       const apiKey = apiKeyInput.value.trim();
       if (apiKey) {
@@ -32,7 +34,7 @@ document.addEventListener('DOMContentLoaded', () => {
         statusDiv.textContent = 'Please enter a valid API Key.';
       }
     });
-  
+
     captureButton.addEventListener('click', () => {
       chrome.storage.local.get(['openaiApiKey'], (result) => {
         if (result.openaiApiKey) {
@@ -43,7 +45,7 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     });
   });
-  
+
   function captureScreen(apiKey) {
     chrome.tabs.captureVisibleTab(null, { format: 'png' }, (dataUrl) => {
       if (chrome.runtime.lastError) {
@@ -53,20 +55,18 @@ document.addEventListener('DOMContentLoaded', () => {
       processImage(dataUrl, apiKey);
     });
   }
-  
+
   async function processImage(dataUrl, apiKey) {
     document.getElementById('status').textContent = 'Processing image...';
-  
+
     try {
-      // Upload the image to get a publicly accessible URL
       const imageUrl = await uploadImage(dataUrl);
-  
+
       if (!imageUrl) {
         document.getElementById('status').textContent = 'Error uploading image.';
         return;
       }
-  
-      // Construct the messages array
+
       const messages = [
         {
           role: "user",
@@ -85,8 +85,7 @@ document.addEventListener('DOMContentLoaded', () => {
           ]
         }
       ];
-  
-      // Call the OpenAI API
+
       const response = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
         headers: {
@@ -99,9 +98,9 @@ document.addEventListener('DOMContentLoaded', () => {
           max_tokens: 300
         })
       });
-  
+
       const data = await response.json();
-  
+
       if (response.ok) {
         const assistantReply = data.choices[0].message.content;
         extractLocationFromResponse(assistantReply);
@@ -112,23 +111,23 @@ document.addEventListener('DOMContentLoaded', () => {
       document.getElementById('status').textContent = 'Error: ' + error.message;
     }
   }
-  
+
   async function uploadImage(dataUrl) {
     try {
       const cloudName = 'dg6ksg0a2';
       const uploadPreset = 'GeoExtension';
-  
+
       const formData = new FormData();
       formData.append('file', dataUrl);
       formData.append('upload_preset', uploadPreset);
-  
+
       const response = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/upload`, {
         method: 'POST',
         body: formData
       });
-  
+
       const data = await response.json();
-  
+
       if (data.secure_url) {
         return data.secure_url;
       } else {
@@ -142,26 +141,53 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function extractLocationFromResponse(responseText) {
-    // Display the assistant's reply
-    // document.getElementById('status').textContent = 'Assistant response received.';
-  
-    // For simplicity, assume the assistant provides the location name directly.
     const locationName = responseText.trim();
-  
-    if (locationName) {
-      document.getElementById('location-name').textContent = locationName;
-      
-      // Save the last generated location to storage
-      chrome.storage.local.set({ lastLocation: locationName }, () => { /* changed */
-        console.log('Last location saved:', locationName); /* changed */
-      }); /* changed */
 
+    if (locationName) {
+      document.getElementById('location-words').textContent = locationName;
+
+      // Save the last generated location words to storage
+      const parsedLocation = parseLocationWords(locationName); /* changed */
+      const coords = parseCoordinates(locationName); /* changed */
+
+      if (parsedLocation) { /* changed */
+        chrome.storage.local.set({ locationWords: parsedLocation }, () => { /* changed */
+          console.log('Location words saved:', parsedLocation); /* changed */
+        }); /* changed */
+        document.getElementById('location-words').textContent = `Location: ${parsedLocation}`; /* changed */
+      }
+
+      if (coords) {
+        chrome.storage.local.set({ coords: coords }, () => {
+          console.log('Coordinates saved:', coords);
+        });
+        document.getElementById('coords').textContent = `Coords: ${coords.lat}, ${coords.lng}`;
+      } else {
+        document.getElementById('status').textContent = 'Could not parse coordinates.';
+      }
 
       document.getElementById('status').textContent = '';
-  
-      // Convert location name to coordinates
-    //   geocodeLocationName(locationName);
     } else {
       document.getElementById('status').textContent = 'Could not extract location name.';
     }
+  }
+
+  /* changed */
+  function parseCoordinates(locationText) {
+    const coordRegex = /(-?\d{1,3}\.\d+),\s*(-?\d{1,3}\.\d+)/; // Regex to find coordinates
+    const match = locationText.match(coordRegex);
+
+    if (match) {
+      const lat = parseFloat(match[1]);
+      const lng = parseFloat(match[2]);
+      return { lat: lat, lng: lng };
+    }
+    return null;
+  }
+
+  /* changed */
+  function parseLocationWords(locationText) {
+    // Remove the coordinates from the location string, leaving only the words
+    const locationWords = locationText.replace(/(-?\d{1,3}\.\d+),\s*(-?\d{1,3}\.\d+)/, '').trim();
+    return locationWords || null;
   }
