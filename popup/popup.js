@@ -3,8 +3,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const saveApiKeyButton = document.getElementById('save-api-key-button');
     const apiKeyInput = document.getElementById('api-key-input');
     const statusDiv = document.getElementById('status');
-    const locationWordsDiv = document.getElementById('location-words'); /* changed */
-    const coordsDiv = document.getElementById('coords'); /* changed */
+    const locationWordsDiv = document.getElementById('location-words');
+    const coordsDiv = document.getElementById('coords');
+    const mapIframe = document.getElementById('map-iframe'); /* changed */
 
     // Load API key from storage
     chrome.storage.local.get(['openaiApiKey'], (result) => {
@@ -13,13 +14,16 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     });
 
-    // Load the last generated location words and coordinates from storage /* changed */
-    chrome.storage.local.get(['locationWords', 'coords'], (result) => { /* changed */
+    // Load the last generated location words and coordinates from storage
+    chrome.storage.local.get(['locationWords', 'coords'], (result) => {
       if (result.locationWords) {
-        locationWordsDiv.textContent = `Location: ${result.locationWords}`; /* changed */
+        locationWordsDiv.textContent = `Location: ${result.locationWords}`;
       }
       if (result.coords) {
-        coordsDiv.textContent = `Coords: ${result.coords.lat}, ${result.coords.lng}`; /* changed */
+        coordsDiv.textContent = `Coords: ${result.coords.lat}, ${result.coords.lng}`;
+
+        // Update the Google Maps iframe with the coordinates
+        mapIframe.src = `https://www.google.com/maps/embed/v1/view?key=AIzaSyBTCrEPAQbgMfY1brzBn7Zcd3DlvaXwsSI&center=${result.coords.lat},${result.coords.lng}&zoom=10`; /* changed */
       }
     });
 
@@ -146,15 +150,14 @@ document.addEventListener('DOMContentLoaded', () => {
     if (locationName) {
       document.getElementById('location-words').textContent = locationName;
 
-      // Save the last generated location words to storage
-      const parsedLocation = parseLocationWords(locationName); /* changed */
-      const coords = parseCoordinates(locationName); /* changed */
+      const parsedLocation = parseLocationWords(locationName);
+      const coords = parseCoordinates(locationName);
 
-      if (parsedLocation) { /* changed */
-        chrome.storage.local.set({ locationWords: parsedLocation }, () => { /* changed */
-          console.log('Location words saved:', parsedLocation); /* changed */
-        }); /* changed */
-        document.getElementById('location-words').textContent = `Location: ${parsedLocation}`; /* changed */
+      if (parsedLocation) {
+        chrome.storage.local.set({ locationWords: parsedLocation }, () => {
+          console.log('Location words saved:', parsedLocation);
+        });
+        document.getElementById('location-words').textContent = `Location: ${parsedLocation}`;
       }
 
       if (coords) {
@@ -162,6 +165,9 @@ document.addEventListener('DOMContentLoaded', () => {
           console.log('Coordinates saved:', coords);
         });
         document.getElementById('coords').textContent = `Coords: ${coords.lat}, ${coords.lng}`;
+
+        // Update the Google Maps iframe with the coordinates
+        document.getElementById('map-iframe').src = `https://www.google.com/maps/embed/v1/view?key=YOUR_GOOGLE_MAPS_API_KEY&center=${coords.lat},${coords.lng}&zoom=10`; /* changed */
       } else {
         document.getElementById('status').textContent = 'Could not parse coordinates.';
       }
@@ -172,7 +178,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  /* changed */
   function parseCoordinates(locationText) {
     const coordRegex = /(-?\d{1,3}\.\d+),\s*(-?\d{1,3}\.\d+)/; // Regex to find coordinates
     const match = locationText.match(coordRegex);
@@ -185,7 +190,6 @@ document.addEventListener('DOMContentLoaded', () => {
     return null;
   }
 
-  /* changed */
   function parseLocationWords(locationText) {
     // Remove the coordinates from the location string, leaving only the words
     const locationWords = locationText.replace(/(-?\d{1,3}\.\d+),\s*(-?\d{1,3}\.\d+)/, '').trim();
