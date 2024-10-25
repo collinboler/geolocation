@@ -54,15 +54,22 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     });
 
-    captureButton.addEventListener('click', () => {
-      chrome.storage.local.get(['openaiApiKey'], (result) => {
-        if (result.openaiApiKey) {
-          captureScreen(result.openaiApiKey);
-        } else {
-          statusDiv.textContent = 'Please enter your OpenAI API Key.';
-        }
-      });
-    });
+
+// Remove any existing listeners before adding a new one
+captureButton.removeEventListener('click', handleCaptureClick);
+
+// Add a single event listener
+captureButton.addEventListener('click', handleCaptureClick);
+
+function handleCaptureClick() {
+  chrome.storage.local.get(['openaiApiKey'], (result) => {
+    if (result.openaiApiKey) {
+      captureScreen(result.openaiApiKey);
+    } else {
+      statusDiv.textContent = 'Please enter your OpenAI API Key.';
+    }
+  });
+}
 
         // Toggle coordinates display when checkbox is changed
         showCoordsCheckbox.addEventListener('change', () => {

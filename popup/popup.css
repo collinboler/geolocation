@@ -33,7 +33,10 @@ h1 {
 #save-api-key-button {
     font-size: 12px;
 }
+
+
 #capture-button {
+
     background-color: green;    /* Make the button red */
     color: white;             /* Text color */
     padding: 10px 20px;       /* Add some padding */
