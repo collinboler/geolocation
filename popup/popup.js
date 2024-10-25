@@ -55,21 +55,15 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
 
-// Remove any existing listeners before adding a new one
-captureButton.removeEventListener('click', handleCaptureClick);
-
-// Add a single event listener
-captureButton.addEventListener('click', handleCaptureClick);
-
-function handleCaptureClick() {
-  chrome.storage.local.get(['openaiApiKey'], (result) => {
-    if (result.openaiApiKey) {
-      captureScreen(result.openaiApiKey);
-    } else {
-      statusDiv.textContent = 'Please enter your OpenAI API Key.';
-    }
-  });
-}
+   captureButton.addEventListener('click', () => {
+      chrome.storage.local.get(['openaiApiKey'], (result) => {
+        if (result.openaiApiKey) {
+          captureScreen(result.openaiApiKey);
+        } else {
+          statusDiv.textContent = 'Please enter your OpenAI API Key.';
+        }
+      });
+    });
 
         // Toggle coordinates display when checkbox is changed
         showCoordsCheckbox.addEventListener('change', () => {
@@ -136,7 +130,7 @@ function toggleCoordsVisibility(showCoords) {
               type: "text",
               text: "Guess this location's exact coordinates, and only output the coordinates of your best guess followed by the location's name or general regional location.  \
               This is for the game geoguessr, so use all the metas that a pro would use, and answer asap! \
-              your response should look something like this for example: 40.348600, -74.659300 Nassau Hall, Princeton, New Jersey, United States."
+              your response should look something like this for example: 40.348600, -74.659300 Nassau Hall Princeton, New Jersey, United States."
 
             },
             {
