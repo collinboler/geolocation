@@ -112,7 +112,7 @@ function toggleCoordsVisibility(showCoords) {
   }
 
   async function processImage(dataUrl, apiKey) {
-    document.getElementById('status').textContent = 'Processing image...';
+    document.getElementById('capture-button').textContent = 'Processing image...';
 
     try {
       const imageUrl = await uploadImage(dataUrl);
@@ -166,7 +166,9 @@ function toggleCoordsVisibility(showCoords) {
       }
     } catch (error) {
       document.getElementById('status').textContent = 'Error: ' + error.message;
+      
     }
+    document.getElementById('capture-button').textContent = 'Capture Screen';
   }
 
   async function uploadImage(dataUrl) {
