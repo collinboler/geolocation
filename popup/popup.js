@@ -233,26 +233,22 @@ function toggleCoordsVisibility(showCoords) {
     }
   }
 
-  function updateMapIframe(lat, lng, zoomLevel) { /* changed */
-    const apiKey = 'AIzaSyBTCrEPAQbgMfY1brzBn7Zcd3DlvaXwsSI'; // Use your actual Google Maps API key here
-    if (!zoomLevel) zoomLevel = 7; // case for when zoom level undefined, new generation
-    const src = `https://www.google.com/maps/embed/v1/place?key=${apiKey}&q=${encodeURIComponent(lat)},${encodeURIComponent(lng)}&zoom=${zoomLevel}`;
+  function updateMapIframe(lat, lng, zoomLevel) {
+    if (!zoomLevel) zoomLevel = 7; // Default zoom level if undefined
+    const src = `https://www.google.com/maps?q=${encodeURIComponent(lat)},${encodeURIComponent(lng)}&z=${zoomLevel}&output=embed`;
     document.getElementById('map-iframe').src = src;
-  }
+}
 
-  function updateZoomLevel(zoomLevel) { /* changed */
+  function updateZoomLevel(zoomLevel) {
     chrome.storage.local.get(['coords'], (result) => {
-      if (result.coords) {
-        // Update the Google Maps iframe with the new zoom level
-        
-        updateMapIframe(result.coords.lat, result.coords.lng, zoomLevel);
-        // Save the new zoom level in local storage
-        chrome.storage.local.set({ zoomLevel: zoomLevel }, () => {
-          console.log('Zoom level saved:', zoomLevel);
-        });
-      }
+        if (result.coords) {
+            updateMapIframe(result.coords.lat, result.coords.lng, zoomLevel);
+            chrome.storage.local.set({ zoomLevel: zoomLevel }, () => {
+                console.log('Zoom level saved:', zoomLevel);
+            });
+        }
     });
-  }
+}
 
   function parseCoordinates(locationText) {
     const coordRegex = /(-?\d{1,3}\.\d+),\s*(-?\d{1,3}\.\d+)/; // Regex to find coordinates
