@@ -10,9 +10,7 @@
         "tabs"
     ],
     "host_permissions": [
-        "https://api.openai.com/*",
-        "https://maps.googleapis.com/*",
-         "https://api.cloudinary.com/*"
+        "https://api.openai.com/*"
     ],
    
     "action" : {
