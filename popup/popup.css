@@ -48,27 +48,33 @@ h1 {
 }
 
 #coords {
-    color: blue;
+    color: #2196F3;
     font-size: 12px;
 }
 
 #zoom-controls {
     text-align: center;
-    margin-top: 10px;
+    margin-top: 0px;
 }
 
 #coords-area, #location-area {
     display: flex;
     align-items: center;
+    margin: 0px;
     gap: 7px;
+
 }
 
+#header {
+    margin-top: 14px;
+    margin-bottom: 0px;
+}
 #save-api-key-button {
     font-size: 12px;
 }
 
 #capture-button {
-    background-color: green;
+    background-color:  #00A67E;
     color: white;
     padding: 10px 20px;
     border: none;
@@ -219,7 +225,7 @@ body.dark-mode input:checked + .slider {
 }
 
 body.dark-mode #capture-button {
-    background-color: #006400;
+    background-color: #00A67E;
 }
 
 body.dark-mode .close {
