@@ -9,16 +9,29 @@ document.addEventListener('DOMContentLoaded', () => {
   const zoomInButton = document.getElementById('zoom-in');  /* changed */
   const zoomOutButton = document.getElementById('zoom-out'); /* changed */
   const showCoordsCheckbox = document.getElementById('show-coords-checkbox');  // Added
+  // new event listeners:
+  const showMapCheckbox = document.getElementById('show-map-checkbox');
+const settingsButton = document.getElementById('settings-button');
+const settingsModal = document.getElementById('settings-modal');
+const closeSettingsButton = document.getElementById('close-settings');
+
 
   let zoomLevel = 5; /* changed */
 
   // Load API key, zoom level, and show-coords state from storage
-  chrome.storage.local.get(['openaiApiKey', 'zoomLevel', 'showCoords'], (result) => {
+  chrome.storage.local.get(['openaiApiKey', 'zoomLevel', 'showCoords', 'showMap'], (result) => {
       if (result.openaiApiKey) {
           apiKeyInput.value = result.openaiApiKey;
       }
       if (result.zoomLevel !== undefined) {
           zoomLevel = result.zoomLevel;
+      }
+      if (result.showMap !== undefined) {
+        showMapCheckbox.checked = result.showMap;
+        toggleMapVisibility(result.showMap);
+      } else {
+        showMapCheckbox.checked = true; // Default is checked
+        toggleMapVisibility(true);
       }
       if (result.showCoords !== undefined) {
           showCoordsCheckbox.checked = result.showCoords;
@@ -51,6 +64,52 @@ document.addEventListener('DOMContentLoaded', () => {
           statusDiv.textContent = 'Please enter a valid API Key.';
       }
   });
+
+  // show map event listener
+  // Toggle map display when checkbox is changed
+showMapCheckbox.addEventListener('change', () => {
+  const showMap = showMapCheckbox.checked;
+  chrome.storage.local.set({ showMap: showMap }, () => {
+    toggleMapVisibility(showMap);
+  });
+});
+
+// event listeners for setting modal
+// Open the settings modal when the Settings button is clicked
+settingsButton.addEventListener('click', () => {
+  settingsModal.style.display = 'block';
+});
+
+// Close the settings modal when the close button is clicked
+closeSettingsButton.addEventListener('click', () => {
+  settingsModal.style.display = 'none';
+});
+
+// Close the settings modal when clicking outside of it
+window.addEventListener('click', (event) => {
+  if (event.target == settingsModal) {
+    settingsModal.style.display = 'none';
+  }
+});
+
+
+
+
+// toggle map visibility
+function toggleMapVisibility(showMap) {
+  const mapIframe = document.getElementById('map-iframe');
+  if (showMap) {
+    mapIframe.style.display = 'in-line';
+    zoomInButton.style.display = 'in-line';
+    zoomOutButton.style.display = 'in-line';
+  } else {
+    mapIframe.style.display = 'none';
+    zoomInButton.style.display = 'none';
+    zoomOutButton.style.display = 'none';
+
+  }
+}
+
 
   captureButton.addEventListener('click', () => {
       chrome.storage.local.get(['openaiApiKey'], (result) => {
@@ -90,10 +149,14 @@ document.addEventListener('DOMContentLoaded', () => {
 // Function to toggle the visibility of coordinates based on the checkbox state
 function toggleCoordsVisibility(showCoords) {
   const coordsDiv = document.getElementById('coords');
+  const coordsText = document.getElementById('coords-text');
   if (showCoords) {
       coordsDiv.style.display = 'block';  // Show the coordinates
+      coordsText.style.display = 'inline';
   } else {
       coordsDiv.style.display = 'none';  // Hide the coordinates
+      coordsText.style.display = 'none';
+
   }
 }
 

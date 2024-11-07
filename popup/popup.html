@@ -5,19 +5,20 @@
   <link rel="stylesheet" href="popup.css">
 </head>
 <body>
+
+  <!-- Settings button -->
+  <button id="settings-button">⚙</button>
+  
   <h1>Location Finder</h1>
 
- 
-
-
-  <div id="api-key-section">
+  <!-- <div id="api-key-section">
     <input type="password" id="api-key-input" placeholder="Enter OpenAI API Key" />
-    <button id="save-api-key-button">Save API Key</button>
-  </div>
+    <button id="save-api-key-button">Save</button>
+  </div> -->
   <button id="capture-button">Capture Screen</button>
   <div id="status"></div>
   <div id="location-area">
-    <p><b>Location: </b></p>
+    <p id="location-text"><b>Location: </b></p>
     <div id="location-words"></div>
   </div>
   
@@ -38,12 +39,35 @@
 </iframe>
   
   <div id="map"></div>
+  <!-- Settings Modal -->
+  <div id="settings-modal" class="modal">
+    <div class="modal-content">
+      <span id="close-settings" class="close">&times;</span>
+      <h2>Settings</h2>
+      <a id="api-text" href="https://platform.openai.com/api-keys">Open AI Key</a>
+      <!-- API Key input -->
+      <div id="api-key-section">
+        <input type="password" id="api-key-input" display ="inline" placeholder="Enter OpenAI API Key" />
+        <button id="save-api-key-button" display="inline">Save</button>
+      </div>
+      <!-- Show Coordinates checkbox -->
+      <div>
+        <label for="show-coords-checkbox">Show Coordinates</label>
+        <input type="checkbox" id="show-coords-checkbox">
+      </div>
+      <!-- Show Map checkbox -->
+      <div>
+        <label for="show-map-checkbox">Show Map</label>
+        <input type="checkbox" id="show-map-checkbox" checked>
+      </div>
+    </div>
+  </div>
+
   <script src="popup.js" type="module"></script>
 
     <!-- Add checkbox for toggling the display of coordinates -->
     <div id="coords-area">
-        <label for="show-coords-checkbox">Show Coordinates</label>
-        <input type="checkbox" id="show-coords-checkbox">
+        <div id="coords-text" style="display:none;"><b> Coordinates: </b></div>
         <div id="coords" style="display:none;"></div> 
 
     </div>
