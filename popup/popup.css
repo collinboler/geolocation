@@ -1,64 +1,96 @@
-/* Set the width and height for portrait orientation */
+/* General Styles */
+
 body {
-    padding-top: 25px;
-    width: 250px;  /* Portrait width */
-    height: 75; /* Portrait height */
+    padding-top: 15px;
+    width: 250px;
     margin: 0;
     font-family: Arial, sans-serif;
+    background-color: #fff;
+    color: #000;
+    transition: background-color 0.3s, color 0.3s;
+    
+    
+}
+#settings-text2 {
+    padding: 0;
 }
 
+/* Ensure the modal is positioned at the very top of the popup */
+/* Modal styling */
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1000; /* Adjusted for higher stacking context */
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden; /* Prevents scrolling outside the modal */
+    background-color: rgba(0,0,0,0.4);
+    margin: 0; /* Removes default margins */
+    padding: 0; /* Removes default padding */
+}
+
+.modal-content {
+    background-color: #fefefe;
+    margin: 0 auto; /* Centers the modal content horizontally */
+    padding: 20px;
+    border: 1px solid #888;
+    width: 90%; /* Adjust width as needed */
+    max-height: 100%; /* Ensures content doesn't overflow vertically */
+    overflow-y: auto; /* Adds scroll if content exceeds viewport */
+}
+
+  
+  
 h1 {
     text-align: center;
 }
-
-
 
 #coords {
     color: blue;
     font-size: 12px;
 }
+
 #zoom-controls {
-    text-align: center; /* Center the buttons */
+    text-align: center;
+    margin-top: 10px;
 }
 
-#coords-area {
-    display: flex; /* Use flexbox to align elements horizontally */
-    align-items: center; /* Vertically align the elements */
-    gap: 7px 
+#coords-area, #location-area {
+    display: flex;
+    align-items: center;
+    gap: 7px;
 }
-#location-area {
-    display: flex; /* Use flexbox to align elements horizontally */
-    align-items: center; /* Vertically align the elements */
-    gap: 7px 
-}
+
 #save-api-key-button {
     font-size: 12px;
 }
 
-
 #capture-button {
-
-    background-color: green;    /* Make the button red */
-    color: white;             /* Text color */
-    padding: 10px 20px;       /* Add some padding */
-    border: none;             /* Remove default borders */
-    border-radius: 5px;       /* Optional: make the corners rounded */
-    font-size: 16px;          /* Adjust text size */
-    cursor: pointer;          /* Change cursor to pointer on hover */
-    display: block;           /* Make the button behave as a block element */
-    margin:  auto;        /* Center the button */
-    text-align: center;       /* Center the text inside the button */
+    background-color: green;
+    color: white;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 5px;
+    font-size: 16px;
+    cursor: pointer;
+    display: block;
+    margin: auto;
+    text-align: center;
 }
 
-/*
-#zoom-controls button {
-  
-    font-size: 18px;
+#settings-button {
+    position: fixed;
+    top: 10px;
+    right: 10px;
+    font-size: 15px;
+    font-weight: bold;
 }
-*/
+
 /* Modal styling */
 .modal {
-    display: none; /* Hidden by default */
+    display: none;
     position: fixed;
     z-index: 1;
     left: 0;
@@ -66,50 +98,134 @@ h1 {
     width: 100%;
     height: 100%;
     overflow: auto;
-    background-color: rgba(0,0,0,0.4); /* Black with opacity */
-  }
-  
-  .modal-content {
+    background-color: rgba(0,0,0,0.4);
+}
+
+.modal-content {
     background-color: #fefefe;
-    margin: 15% auto; /* Centered */
+    margin: 15% auto;
     padding: 20px;
     border: 1px solid #888;
-    width: 80%; /* Adjust as needed */
-  }
-  
-  .close {
+    width: 80%;
+}
+
+.close {
     color: #aaa;
     float: right;
     font-size: 28px;
     font-weight: bold;
-  }
-  
-  .close:hover,
-  .close:focus {
+}
+
+.close:hover,
+.close:focus {
     color: black;
     text-decoration: none;
     cursor: pointer;
-  }
-  
-  #coords-text {
+}
+
+#coords-text {
     padding-left: 10px;
     font-size: 12px;
 }
 
-  #location-text {
+#location-text {
     padding-left: 10px;
     font-size: 13px;
-
-  }
-
-  #api-key-section {
-    display: flex;
-    gap: 10px; /* Adjust spacing between input and button */
 }
-#settings-button {
-    position: fixed;
-    top: 10px;     /* Distance from the top */
-    right: 10px;   /* Distance from the right */
-    font-size: 15px;
-    font-weight: bold;
+
+#api-key-section {
+    display: flex;
+    gap: 10px;
+}
+
+.setting-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 10px;
+}
+
+/* Switch styling */
+.switch {
+  position: relative;
+  display: inline-block;
+  width: 40px;
+  height: 20px;
+}
+
+.switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: #ccc;
+  transition: .4s;
+}
+
+.slider:before {
+  position: absolute;
+  content: "";
+  height: 14px;
+  width: 14px;
+  left: 3px;
+  bottom: 3px;
+  background-color: white;
+  transition: .4s;
+}
+
+input:checked + .slider {
+  background-color: #2196F3;
+}
+
+input:checked + .slider:before {
+  transform: translateX(20px);
+}
+
+.slider.round {
+  border-radius: 20px;
+}
+
+.slider.round:before {
+  border-radius: 50%;
+}
+
+#api-text {
+    color: #2196F3;
+}
+/* Dark Mode Styles */
+body.dark-mode {
+    background-color: #121212;
+    color: #ffffff;
+}
+
+body.dark-mode .modal-content {
+    background-color: #1e1e1e;
+}
+
+body.dark-mode .slider {
+    background-color: #555;
+}
+
+body.dark-mode input:checked + .slider {
+    background-color: #2196F3;
+}
+
+body.dark-mode #capture-button {
+    background-color: #006400;
+}
+
+body.dark-mode .close {
+    color: #fff;
+}
+
+body.dark-mode #settings-button {
+    color: #303232;
 }

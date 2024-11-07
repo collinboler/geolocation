@@ -1,3 +1,4 @@
+let zoomLevel = 5; // Declare at the top level
 document.addEventListener('DOMContentLoaded', () => {
   const captureButton = document.getElementById('capture-button');
   const saveApiKeyButton = document.getElementById('save-api-key-button');
@@ -6,20 +7,19 @@ document.addEventListener('DOMContentLoaded', () => {
   const locationWordsDiv = document.getElementById('location-words');
   const coordsDiv = document.getElementById('coords');
   const mapIframe = document.getElementById('map-iframe');
-  const zoomInButton = document.getElementById('zoom-in');  /* changed */
-  const zoomOutButton = document.getElementById('zoom-out'); /* changed */
-  const showCoordsCheckbox = document.getElementById('show-coords-checkbox');  // Added
-  // new event listeners:
-  const showMapCheckbox = document.getElementById('show-map-checkbox');
-const settingsButton = document.getElementById('settings-button');
-const settingsModal = document.getElementById('settings-modal');
-const closeSettingsButton = document.getElementById('close-settings');
+  const zoomInButton = document.getElementById('zoom-in');
+  const zoomOutButton = document.getElementById('zoom-out');
+  const showCoordsSwitch = document.getElementById('show-coords-switch');
+  const showMapSwitch = document.getElementById('show-map-switch');
+  const settingsButton = document.getElementById('settings-button');
+  const settingsModal = document.getElementById('settings-modal');
+  const closeSettingsButton = document.getElementById('close-settings');
+  const darkModeSwitch = document.getElementById('dark-mode-switch');
 
 
-  let zoomLevel = 5; /* changed */
 
-  // Load API key, zoom level, and show-coords state from storage
-  chrome.storage.local.get(['openaiApiKey', 'zoomLevel', 'showCoords', 'showMap'], (result) => {
+  // Load settings from storage
+  chrome.storage.local.get(['openaiApiKey', 'zoomLevel', 'showCoords', 'showMap', 'darkMode'], (result) => {
       if (result.openaiApiKey) {
           apiKeyInput.value = result.openaiApiKey;
       }
@@ -27,18 +27,25 @@ const closeSettingsButton = document.getElementById('close-settings');
           zoomLevel = result.zoomLevel;
       }
       if (result.showMap !== undefined) {
-        showMapCheckbox.checked = result.showMap;
+        showMapSwitch.checked = result.showMap;
         toggleMapVisibility(result.showMap);
       } else {
-        showMapCheckbox.checked = true; // Default is checked
+        showMapSwitch.checked = true;
         toggleMapVisibility(true);
       }
       if (result.showCoords !== undefined) {
-          showCoordsCheckbox.checked = result.showCoords;
-          toggleCoordsVisibility(result.showCoords); // Update visibility
+          showCoordsSwitch.checked = result.showCoords;
+          toggleCoordsVisibility(result.showCoords);
       } else {
-          showCoordsCheckbox.checked = false;  // Default is unchecked
-          toggleCoordsVisibility(false); // Start with coords hidden
+          showCoordsSwitch.checked = false;
+          toggleCoordsVisibility(false);
+      }
+      if (result.darkMode !== undefined) {
+          darkModeSwitch.checked = result.darkMode;
+          toggleDarkMode(result.darkMode);
+      } else {
+          darkModeSwitch.checked = false;
+          toggleDarkMode(false);
       }
   });
 
@@ -65,51 +72,62 @@ const closeSettingsButton = document.getElementById('close-settings');
       }
   });
 
-  // show map event listener
-  // Toggle map display when checkbox is changed
-showMapCheckbox.addEventListener('change', () => {
-  const showMap = showMapCheckbox.checked;
-  chrome.storage.local.set({ showMap: showMap }, () => {
-    toggleMapVisibility(showMap);
+  // Toggle map display when switch is changed
+  showMapSwitch.addEventListener('change', () => {
+    const showMap = showMapSwitch.checked;
+    chrome.storage.local.set({ showMap: showMap }, () => {
+      toggleMapVisibility(showMap);
+    });
   });
-});
 
-// event listeners for setting modal
-// Open the settings modal when the Settings button is clicked
-settingsButton.addEventListener('click', () => {
-  settingsModal.style.display = 'block';
-});
+  // Toggle coordinates display when switch is changed
+  showCoordsSwitch.addEventListener('change', () => {
+      const showCoords = showCoordsSwitch.checked;
+      chrome.storage.local.set({ showCoords: showCoords }, () => {
+          toggleCoordsVisibility(showCoords);
+      });
+  });
 
-// Close the settings modal when the close button is clicked
-closeSettingsButton.addEventListener('click', () => {
-  settingsModal.style.display = 'none';
-});
+  // Dark Mode switch event listener
+  darkModeSwitch.addEventListener('change', () => {
+      const darkMode = darkModeSwitch.checked;
+      chrome.storage.local.set({ darkMode: darkMode }, () => {
+          toggleDarkMode(darkMode);
+      });
+  });
 
-// Close the settings modal when clicking outside of it
-window.addEventListener('click', (event) => {
-  if (event.target == settingsModal) {
+  // Open the settings modal when the Settings button is clicked
+  settingsButton.addEventListener('click', () => {
+    settingsModal.style.display = 'block';
+  });
+
+  // Close the settings modal when the close button is clicked
+  closeSettingsButton.addEventListener('click', () => {
     settingsModal.style.display = 'none';
-  }
-});
+  });
 
+  // Close the settings modal when clicking outside of it
+  window.addEventListener('click', (event) => {
+    if (event.target == settingsModal) {
+      settingsModal.style.display = 'none';
+    }
+  });
 
+  // Zoom In button event listener
+  zoomInButton.addEventListener('click', () => {
+      if (zoomLevel < 21) {
+          zoomLevel++;
+          updateZoomLevel(zoomLevel);
+      }
+  });
 
-
-// toggle map visibility
-function toggleMapVisibility(showMap) {
-  const mapIframe = document.getElementById('map-iframe');
-  if (showMap) {
-    mapIframe.style.display = 'in-line';
-    zoomInButton.style.display = 'in-line';
-    zoomOutButton.style.display = 'in-line';
-  } else {
-    mapIframe.style.display = 'none';
-    zoomInButton.style.display = 'none';
-    zoomOutButton.style.display = 'none';
-
-  }
-}
-
+  // Zoom Out button event listener
+  zoomOutButton.addEventListener('click', () => {
+      if (zoomLevel > 0) {
+          zoomLevel--;
+          updateZoomLevel(zoomLevel);
+      }
+  });
 
   captureButton.addEventListener('click', () => {
       chrome.storage.local.get(['openaiApiKey'], (result) => {
@@ -120,43 +138,44 @@ function toggleMapVisibility(showMap) {
           }
       });
   });
-
-  // Toggle coordinates display when checkbox is changed
-  showCoordsCheckbox.addEventListener('change', () => {
-      const showCoords = showCoordsCheckbox.checked;
-      chrome.storage.local.set({ showCoords: showCoords }, () => {
-          toggleCoordsVisibility(showCoords);
-      });
-  });
-
-  // Zoom In button event listener /* changed */
-  zoomInButton.addEventListener('click', () => {
-      if (zoomLevel < 21) {  // Max zoom level for Google Maps is 21 /* changed */
-          zoomLevel++;
-          updateZoomLevel(zoomLevel);
-      }
-  });
-
-  // Zoom Out button event listener /* changed */
-  zoomOutButton.addEventListener('click', () => {
-      if (zoomLevel > 0) {  // Min zoom level for Google Maps is 0 /* changed */
-          zoomLevel--;
-          updateZoomLevel(zoomLevel);
-      }
-  });
 });
 
-// Function to toggle the visibility of coordinates based on the checkbox state
+// Function to toggle the visibility of coordinates based on the switch state
 function toggleCoordsVisibility(showCoords) {
   const coordsDiv = document.getElementById('coords');
   const coordsText = document.getElementById('coords-text');
   if (showCoords) {
-      coordsDiv.style.display = 'block';  // Show the coordinates
+      coordsDiv.style.display = 'block';
       coordsText.style.display = 'inline';
   } else {
-      coordsDiv.style.display = 'none';  // Hide the coordinates
+      coordsDiv.style.display = 'none';
       coordsText.style.display = 'none';
+  }
+}
 
+// Function to toggle dark mode
+function toggleDarkMode(darkMode) {
+  const body = document.body;
+  if (darkMode) {
+      body.classList.add('dark-mode');
+  } else {
+      body.classList.remove('dark-mode');
+  }
+}
+
+// Function to toggle map visibility
+function toggleMapVisibility(showMap) {
+  const mapIframe = document.getElementById('map-iframe');
+  const zoomInButton = document.getElementById('zoom-in');
+  const zoomOutButton = document.getElementById('zoom-out');
+  if (showMap) {
+    mapIframe.style.display = 'block';
+    zoomInButton.style.display = 'inline-block';
+    zoomOutButton.style.display = 'inline-block';
+  } else {
+    mapIframe.style.display = 'none';
+    zoomInButton.style.display = 'none';
+    zoomOutButton.style.display = 'none';
   }
 }
 
@@ -221,7 +240,6 @@ Your response should look something like this for example: 40.348600, -74.659300
   document.getElementById('capture-button').textContent = 'Capture Screen';
 }
 
-// Removed the uploadImage function
 
 function extractLocationFromResponse(responseText) {
   const locationName = responseText.trim();
@@ -246,7 +264,7 @@ function extractLocationFromResponse(responseText) {
           document.getElementById('coords').textContent = `${coords.lat}, ${coords.lng}`;
 
           // Update the Google Maps iframe with the coordinates and marker
-          updateMapIframe(coords.lat, coords.lng, 7); /* changed */
+          updateMapIframe(coords.lat, coords.lng, zoomLevel);
       } else {
           document.getElementById('status').textContent = 'Could not parse coordinates.';
       }
@@ -275,7 +293,7 @@ function updateZoomLevel(zoomLevel) {
 }
 
 function parseCoordinates(locationText) {
-  const coordRegex = /(-?\d{1,3}\.\d+),\s*(-?\d{1,3}\.\d+)/; // Regex to find coordinates
+  const coordRegex = /(-?\d{1,3}\.\d+),\s*(-?\d{1,3}\.\d+)/;
   const match = locationText.match(coordRegex);
 
   if (match) {
@@ -287,7 +305,6 @@ function parseCoordinates(locationText) {
 }
 
 function parseLocationWords(locationText) {
-  // Remove the coordinates from the location string, leaving only the words
   const locationWords = locationText.replace(/(-?\d{1,3}\.\d+),\s*(-?\d{1,3}\.\d+)/, '').trim();
   return locationWords || null;
 }

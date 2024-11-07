@@ -1,7 +1,7 @@
 {
     "manifest_version": 3,
     "name": "Geo Locator",
-    "version": "1.0",
+    "version": "0.1",
     "description": "Captures a screenshot and finds its location.",
     "permissions": [
         "activeTab",
@@ -15,12 +15,11 @@
    
     "action" : {
       "default_popup": "popup/popup.html",
-      "default_icon": {
+      "icons": {
         "16": "images/geolocationbot.png",
         "48": "images/geolocationbot.png",
         "128": "images/geolocationbot.png",
         "32" : "images/geolocationbot.png"
-
 
       }
     }

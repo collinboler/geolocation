@@ -11,10 +11,6 @@
 
   <h1>Geo Location</h1>
 
-  <!-- <div id="api-key-section">
-    <input type="password" id="api-key-input" placeholder="Enter OpenAI API Key" />
-    <button id="save-api-key-button">Save</button>
-  </div> -->
   <button id="capture-button">Capture Screen</button>
   <div id="status"></div>
   <div id="location-area">
@@ -22,56 +18,68 @@
     <div id="location-words"></div>
   </div>
   
-    <!-- Zoom buttons -->
-    <div id="zoom-controls">
-        <button id="zoom-in">+</button>
-        <button id="zoom-out">-</button>
-      </div>
-    
-<iframe
-  id="map-iframe" 
-  width="100%" 
-  height="150" 
-  frameborder="0" 
-  style="border:0" 
-  allowfullscreen 
-  src="">
-</iframe>
+  <!-- Zoom buttons -->
+  <div id="zoom-controls">
+      <button id="zoom-in">+</button>
+      <button id="zoom-out">-</button>
+  </div>
+  
+  <iframe
+    id="map-iframe" 
+    width="100%" 
+    height="150" 
+    frameborder="0" 
+    style="border:0" 
+    allowfullscreen 
+    src="">
+  </iframe>
   
   <div id="map"></div>
+
   <!-- Settings Modal -->
-  <div id="settings-modal" class="modal">
-    <div class="modal-content">
+  <div id="settings-modal" display="block" class="modal">
+    <div class="modal-content" display="flex" >
       <span id="close-settings" class="close">&times;</span>
-      <h2>Settings</h2>
+      <h2 id="settings-text2">Settings</h2>
       <a id="api-text" href="https://platform.openai.com/api-keys">Open AI Key</a>
       <!-- API Key input -->
       <div id="api-key-section">
-        <input type="password" id="api-key-input" display ="inline" placeholder="Enter OpenAI API Key" />
-        <button id="save-api-key-button" display="inline">Save</button>
+        <input type="password" id="api-key-input" placeholder="Enter OpenAI API Key" />
+        <button id="save-api-key-button">Save</button>
       </div>
-      <!-- Show Coordinates checkbox -->
-      <div>
-        <label for="show-coords-checkbox">Show Coordinates</label>
-        <input type="checkbox" id="show-coords-checkbox">
+      <!-- Show Coordinates Switch -->
+      <div class="setting-item">
+        <label for="show-coords-switch">Show Coordinates</label>
+        <label class="switch">
+          <input type="checkbox" id="show-coords-switch">
+          <span class="slider round"></span>
+        </label>
       </div>
-      <!-- Show Map checkbox -->
-      <div>
-        <label for="show-map-checkbox">Show Map</label>
-        <input type="checkbox" id="show-map-checkbox" checked>
+      <!-- Show Map Switch -->
+      <div class="setting-item">
+        <label for="show-map-switch">Show Map</label>
+        <label class="switch">
+          <input type="checkbox" id="show-map-switch" checked>
+          <span class="slider round"></span>
+        </label>
+      </div>
+      <!-- Dark Mode Switch -->
+      <div class="setting-item">
+        <label for="dark-mode-switch">Dark Mode</label>
+        <label class="switch">
+          <input type="checkbox" id="dark-mode-switch">
+          <span class="slider round"></span>
+        </label>
       </div>
     </div>
   </div>
 
+  <!-- Coordinates area -->
+  <div id="coords-area">
+    <div id="coords-text" style="display:none;"><b> Coordinates: </b></div>
+    <div id="coords" style="display:none;"></div> 
+  </div>
+
   <script src="popup.js" type="module"></script>
-
-    <!-- Add checkbox for toggling the display of coordinates -->
-    <div id="coords-area">
-        <div id="coords-text" style="display:none;"><b> Coordinates: </b></div>
-        <div id="coords" style="display:none;"></div> 
-
-    </div>
-
-   
 </body>
 </html>
