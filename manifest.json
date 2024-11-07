@@ -1,13 +1,13 @@
 {
     "manifest_version": 3,
-    "name": "Geo Locator",
+    "name": "GeoGuesser Hacker",
     "version": "0.1",
-    "description": "Captures a screenshot and finds its location.",
+    "description": "Uses ChatGPT to guess the exact location of the image on your screen. Displays exact coordinates on mini google maps emulator.",
     "permissions": [
         "activeTab",
-        "scripting",
-        "storage",
-        "tabs"
+    
+        "storage"
+
     ],
     "host_permissions": [
         "https://api.openai.com/*"
@@ -15,11 +15,12 @@
    
     "action" : {
       "default_popup": "popup/popup.html",
-      "icons": {
-        "16": "images/geolocationbot.png",
-        "48": "images/geolocationbot.png",
-        "128": "images/geolocationbot.png",
-        "32" : "images/geolocationbot.png"
+      "default_icon": {
+       
+        "128": "images/geolocationbot128.png",
+        "64": "images/geolocationbot64.png",
+        "16": "images/geolocationbot16.png"
+
 
       }
     }
