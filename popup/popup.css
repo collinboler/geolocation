@@ -1,5 +1,6 @@
 /* Set the width and height for portrait orientation */
 body {
+    padding-top: 25px;
     width: 250px;  /* Portrait width */
     height: 75; /* Portrait height */
     margin: 0;
@@ -105,6 +106,10 @@ h1 {
     display: flex;
     gap: 10px; /* Adjust spacing between input and button */
 }
-#settings-gear {
-    font-size: 25px;
+#settings-button {
+    position: fixed;
+    top: 10px;     /* Distance from the top */
+    right: 10px;   /* Distance from the right */
+    font-size: 15px;
+    font-weight: bold;
 }
