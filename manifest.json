@@ -5,9 +5,7 @@
     "description": "Uses ChatGPT to guess the exact location of the image on your screen. Displays exact coordinates on mini google maps emulator.",
     "permissions": [
         "activeTab",
-    
         "storage"
-
     ],
     "host_permissions": [
         "https://api.openai.com/*"
@@ -16,12 +14,9 @@
     "action" : {
       "default_popup": "popup/popup.html",
       "default_icon": {
-       
         "128": "images/geolocationbot128.png",
         "64": "images/geolocationbot64.png",
         "16": "images/geolocationbot16.png"
-
-
       }
     }
   }
