@@ -1,4 +1,4 @@
-Use LLM's to guess your onscreen location using AI computer vision (Perfect for GeoGuesser, among other things)
+Chrome Extension that uses LLMs to guess your onscreen location using AI computer vision (Perfect for GeoGuesser, among other things)
 
 Download [here](https://chromewebstore.google.com/detail/geoguesser-hacker/ogjhgcaaaclhdaalliolbhibppalepkj?hl=en)
 
