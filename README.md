@@ -4,4 +4,4 @@ Download [here](https://chromewebstore.google.com/detail/geoguesser-hacker/ogjhg
 
 Supports OpenAI GPT-4o; more models coming soon
 
-**2,500+ downloads and counting**
+**3,500+ downloads and counting**
