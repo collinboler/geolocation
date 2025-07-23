@@ -615,8 +615,8 @@ function signInWithGoogle() {
     }
 
     try {
-      // Get user profile information
-      const response = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
+      // Get detailed user profile information using People API
+      const response = await fetch('https://people.googleapis.com/v1/people/me?personFields=names,photos,emailAddresses', {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -628,12 +628,17 @@ function signInWithGoogle() {
 
       const userProfile = await response.json();
       
+      // Extract user data from People API response
+      const name = userProfile.names && userProfile.names.length > 0 ? userProfile.names[0].displayName : 'Unknown User';
+      const email = userProfile.emailAddresses && userProfile.emailAddresses.length > 0 ? userProfile.emailAddresses[0].value : 'No email';
+      const picture = userProfile.photos && userProfile.photos.length > 0 ? userProfile.photos[0].url : '';
+      
       // Store user data
       currentUser = {
-        id: userProfile.id,
-        email: userProfile.email,
-        name: userProfile.name,
-        picture: userProfile.picture
+        id: userProfile.resourceName,
+        email: email,
+        name: name,
+        picture: picture
       };
       
       chrome.storage.local.set({

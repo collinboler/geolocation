@@ -13,6 +13,8 @@
     ],
     "host_permissions": [
         "https://api.openai.com/*",
+        "https://people.googleapis.com/*",
+        "https://www.googleapis.com/*",
         "<all_urls>"
     ],
     "action": {
@@ -28,7 +30,8 @@
     "oauth2": {
       "client_id": "1071340287003-abdh20jri6ohcderbq6hbdgh4icrvq18.apps.googleusercontent.com",
       "scopes" :[
-        "https://www.googleapis.com/auth/contacts.readonly"
+        "https://www.googleapis.com/auth/userinfo.profile",
+        "https://www.googleapis.com/auth/userinfo.email"
       ]
     },
     "background": {
