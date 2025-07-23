@@ -7,7 +7,8 @@
         "activeTab",
         "storage",
         "sidePanel",
-        "tabs"
+        "tabs",
+        "tabCapture"
     ],
     "host_permissions": [
         "https://api.openai.com/*",

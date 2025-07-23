@@ -188,12 +188,41 @@ function toggleMapVisibility(showMap) {
 }
 
 function captureScreen(apiKey) {
-  chrome.tabs.captureVisibleTab(null, { format: 'png' }, (dataUrl) => {
-    if (chrome.runtime.lastError) {
-      document.getElementById('status').textContent = 'Error capturing screen: ' + chrome.runtime.lastError.message;
-      return;
-    }
-    processImage(dataUrl, apiKey);
+  // Get current tab info
+  chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+    const currentTab = tabs[0];
+    
+    // Capture the visible tab content
+    chrome.tabs.captureVisibleTab(currentTab.windowId, { format: 'png' }, (dataUrl) => {
+      if (chrome.runtime.lastError) {
+        document.getElementById('status').textContent = 'Error capturing screen: ' + chrome.runtime.lastError.message;
+        return;
+      }
+      
+      // Create canvas to crop out the side panel
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        
+        // Get the side panel width (approximately 400px)
+        const sidePanelWidth = 400;
+        const cropWidth = img.width - sidePanelWidth;
+        
+        // Set canvas dimensions to exclude side panel
+        canvas.width = cropWidth;
+        canvas.height = img.height;
+        
+        // Draw only the main content area (excluding side panel)
+        ctx.drawImage(img, 0, 0, cropWidth, img.height, 0, 0, cropWidth, img.height);
+        
+        // Convert cropped canvas to data URL
+        const croppedDataUrl = canvas.toDataURL('image/png');
+        processImage(croppedDataUrl, apiKey);
+      };
+      
+      img.src = dataUrl;
+    });
   });
 }
 
@@ -211,8 +240,7 @@ async function processImage(dataUrl, apiKey) {
             /*             text: "Guess this location's exact coordinates, and only output the coordinates of your best guess followed by the location's name or general regional location.  \
 This is for the game geoguessr, so use all the metas that a pro would use, and answer asap! \
 Your response should look something like this for example: 40.348600, -74.659300 Nassau Hall Princeton, New Jersey, United States."  */
-            text: "Guess this location's exact coordinates, and only output the coordinates of your best guess followed by the location's name or general regional location.  \
-This is for the game geoguessr, so use all the metas that a pro would use, and answer asap! Output your response in this JSON format only: \n\nExample response format:\n{\n  \"coordinates\": {\n    \"lat\": 40.348600,\n    \"lng\": -74.659300\n  },\n  \"location\": \"Nassau Hall Princeton, New Jersey, United States\"\n}" 
+            text: "Guess this location's exact coordinates, and only output the coordinates of your best guess followed by the location's name or general regional location. This is for the game geoguessr, so use all the metas that a pro would use, and answer asap! Output your response in this JSON format only: {\"coordinates\": {\"lat\": 40.348600, \"lng\": -74.659300}, \"location\": \"Nassau Hall Princeton, New Jersey, United States\"} ALWAYS OUTPUT SOME JSON GUESS, EVEN IF YOU ARE NOT 100% CERTAIN. Take your best guess for sure though, just in edge cases." 
           },
           {
             type: "image_url",
