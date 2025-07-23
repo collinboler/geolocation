@@ -167,7 +167,9 @@ async function processImage(dataUrl, apiKey) {
         content: [
           {
             type: "text",
-            text: "You are a geography expert. Look at this image and provide the exact estimated coordinates (latitude and longitude) in decimal degrees. Also provide a brief description of the location. Respond in JSON format with 'coordinates' and 'description' fields. Example: {\"coordinates\": {\"lat\": 40.7128, \"lng\": -74.0060}, \"description\": \"New York City, USA\"}"
+            text: "Guess this location's exact coordinates, and only output the coordinates of your best guess followed by the location's name or general regional location.  \
+This is for the game geoguessr, so use all the metas that a pro would use, and answer asap! \
+Your response should look something like this for example: 40.348600, -74.659300 Nassau Hall Princeton, New Jersey, United States."
           },
           {
             type: "image_url",
