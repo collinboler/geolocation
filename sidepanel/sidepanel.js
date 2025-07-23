@@ -177,6 +177,9 @@ document.addEventListener('DOMContentLoaded', () => {
       advancedDropdownToggle.click();
     }
   });
+
+  // Initialize authentication
+  initAuth();
 });
 
 // Page navigation functions
@@ -568,4 +571,122 @@ function updateCostDisplay(tokensUsed, analysisCost) {
 
 function updateSessionCost(sessionCost) {
   document.getElementById('session-cost').textContent = `$${sessionCost.toFixed(6)}`;
+}
+
+// Google Authentication Functions
+let currentUser = null;
+
+// Initialize authentication
+function initAuth() {
+  const googleSigninButton = document.getElementById('google-signin-button');
+  const googleSignoutButton = document.getElementById('google-signout-button');
+  
+  if (googleSigninButton) {
+    googleSigninButton.addEventListener('click', signInWithGoogle);
+  }
+  
+  if (googleSignoutButton) {
+    googleSignoutButton.addEventListener('click', signOutFromGoogle);
+  }
+  
+  // Check if user is already signed in
+  checkAuthState();
+}
+
+// Check current authentication state
+function checkAuthState() {
+  chrome.storage.local.get(['userProfile'], (result) => {
+    if (result.userProfile) {
+      currentUser = result.userProfile;
+      updateAuthUI(true);
+    } else {
+      updateAuthUI(false);
+    }
+  });
+}
+
+// Sign in with Google using Chrome's built-in identity API
+function signInWithGoogle() {
+  chrome.identity.getAuthToken({ interactive: true }, async function(token) {
+    if (chrome.runtime.lastError || !token) {
+      console.error(chrome.runtime.lastError);
+      showStatus('Authentication failed. Please try again.');
+      return;
+    }
+
+    try {
+      // Get user profile information
+      const response = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to get user profile');
+      }
+
+      const userProfile = await response.json();
+      
+      // Store user data
+      currentUser = {
+        id: userProfile.id,
+        email: userProfile.email,
+        name: userProfile.name,
+        picture: userProfile.picture
+      };
+      
+      chrome.storage.local.set({
+        userProfile: currentUser
+      }, () => {
+        updateAuthUI(true);
+        showStatus('Successfully signed in with Google!');
+      });
+      
+    } catch (error) {
+      console.error('Profile fetch error:', error);
+      showStatus('Failed to get user profile.');
+    }
+  });
+}
+
+// Sign out from Google
+function signOutFromGoogle() {
+  // Get the token and revoke access
+  chrome.identity.getAuthToken({ interactive: false }, function(token) {
+    if (token) {
+      // Revoke token
+      fetch(`https://accounts.google.com/o/oauth2/revoke?token=${token}`);
+      // Remove token from Chrome's cache
+      chrome.identity.removeCachedAuthToken({ token: token });
+    }
+    
+    // Clear stored user data
+    chrome.storage.local.remove(['userProfile'], () => {
+      currentUser = null;
+      updateAuthUI(false);
+      showStatus('Successfully signed out.');
+    });
+  });
+}
+
+// Update authentication UI
+function updateAuthUI(isSignedIn) {
+  const notSignedInDiv = document.getElementById('not-signed-in');
+  const signedInDiv = document.getElementById('signed-in');
+  const userNameDiv = document.getElementById('user-name');
+  const userEmailDiv = document.getElementById('user-email');
+  const userAvatarImg = document.getElementById('user-avatar');
+  
+  if (isSignedIn && currentUser) {
+    notSignedInDiv.style.display = 'none';
+    signedInDiv.style.display = 'flex';
+    
+    userNameDiv.textContent = currentUser.name;
+    userEmailDiv.textContent = currentUser.email;
+    userAvatarImg.src = currentUser.picture;
+  } else {
+    notSignedInDiv.style.display = 'flex';
+    signedInDiv.style.display = 'none';
+  }
 } 

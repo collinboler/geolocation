@@ -1,34 +1,39 @@
 {
     "manifest_version": 3,
     "name": "GeoGuesser Hacker",
-    "version": "0.1",
+    "version": "0.2",
     "description": "Uses ChatGPT to guess the exact location of the image on your screen. Displays exact coordinates on mini google maps emulator.",
     "permissions": [
         "activeTab",
         "storage",
         "sidePanel",
         "tabs",
-        "tabCapture"
+        "tabCapture",
+        "identity"
     ],
     "host_permissions": [
         "https://api.openai.com/*",
         "<all_urls>"
     ],
-   
-    "action" : {
-      "default_icon": {
-        "128": "images/geolocationbot128.png",
-        "64": "images/geolocationbot64.png",
-        "16": "images/geolocationbot16.png"
-      }
+    "action": {
+        "default_icon": {
+            "128": "images/geolocationbot128.png",
+            "64": "images/geolocationbot64.png",
+            "16": "images/geolocationbot16.png"
+        }
     },
-    
     "side_panel": {
-      "default_path": "sidepanel/sidepanel.html"
+        "default_path": "sidepanel/sidepanel.html"
     },
-    
+    "oauth2": {
+      "client_id": "1071340287003-abdh20jri6ohcderbq6hbdgh4icrvq18.apps.googleusercontent.com",
+      "scopes" :[
+        "https://www.googleapis.com/auth/contacts.readonly"
+      ]
+    },
     "background": {
-      "service_worker": "background.js"
-    }
-  }
+        "service_worker": "scripts/background.js"
+    },
+    "key":"MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA2noJh5qLVxpJhPsGdSt1CG1JXLjDnxBWSqbi8yi783Mdz5KF5yPrrnjAWTq5/PF3RsqfEoxcm9bJ6UOFpHHwfMySJCUf8zrrnX78KS9kV/+TmaKl9nGbaCzzRRodpXBrx64gJoEnqsSJCsLMI153PNfxCGCg+SdXbC4syAa4EnJ8fus7FfvFzjonC2Ug5nrKl/u5ngbAU3q17Uy8tLnJMqG/333hyhrM4rk2UFT9WMZJ8E5yyJh5C8L/y7IwVoKIeUXoIM32GajQolb56PAOeJIHyF6q7tYcw2/sj1PNGQcq/bAuF5koDWmpWDYIGLFTMJbqRtIJC0vIpaQDR2/KIwIDAQAB"
  
+  }
