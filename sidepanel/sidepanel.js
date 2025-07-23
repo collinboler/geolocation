@@ -2,6 +2,9 @@ let zoomLevel = 5; // Declare at the top level
 
 document.addEventListener('DOMContentLoaded', () => {
   const captureButton = document.getElementById('capture-button');
+  const settingsButton = document.getElementById('settings-button');
+  const closeSettingsButton = document.getElementById('close-settings');
+  const settingsModal = document.getElementById('settings-modal');
   const saveApiKeyButton = document.getElementById('save-api-key-button');
   const apiKeyInput = document.getElementById('api-key-input');
   const statusDiv = document.getElementById('status');
@@ -112,6 +115,29 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     });
   });
+
+  // Settings modal event listeners
+  settingsButton.addEventListener('click', () => {
+    settingsModal.style.display = 'block';
+  });
+
+  closeSettingsButton.addEventListener('click', () => {
+    settingsModal.style.display = 'none';
+  });
+
+  // Close modal when clicking outside of it
+  settingsModal.addEventListener('click', (event) => {
+    if (event.target === settingsModal) {
+      settingsModal.style.display = 'none';
+    }
+  });
+
+  // Close modal with Escape key
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && settingsModal.style.display === 'block') {
+      settingsModal.style.display = 'none';
+    }
+  });
 });
 
 // Function to toggle the visibility of coordinates based on the switch state
@@ -167,9 +193,12 @@ async function processImage(dataUrl, apiKey) {
         content: [
           {
             type: "text",
-            text: "Guess this location's exact coordinates, and only output the coordinates of your best guess followed by the location's name or general regional location.  \
+
+            /*             text: "Guess this location's exact coordinates, and only output the coordinates of your best guess followed by the location's name or general regional location.  \
 This is for the game geoguessr, so use all the metas that a pro would use, and answer asap! \
-Your response should look something like this for example: 40.348600, -74.659300 Nassau Hall Princeton, New Jersey, United States."
+Your response should look something like this for example: 40.348600, -74.659300 Nassau Hall Princeton, New Jersey, United States."  */
+            text: "Guess this location's exact coordinates, and only output the coordinates of your best guess followed by the location's name or general regional location.  \
+This is for the game geoguessr, so use all the metas that a pro would use, and answer asap! Output your response in this JSON format only: \n\nExample response format:\n{\n  \"coordinates\": {\n    \"lat\": 40.348600,\n    \"lng\": -74.659300\n  },\n  \"location\": \"Nassau Hall Princeton, New Jersey, United States\"\n}" 
           },
           {
             type: "image_url",
@@ -241,19 +270,21 @@ Your response should look something like this for example: 40.348600, -74.659300
 
 function extractLocationFromResponse(responseText) {
   try {
-    // Try to parse as JSON first
+    // Find and parse JSON from the response
     const jsonMatch = responseText.match(/\{[\s\S]*\}/);
     if (jsonMatch) {
       const parsed = JSON.parse(jsonMatch[0]);
-      if (parsed.coordinates && parsed.description) {
+      
+      // Handle the new JSON format
+      if (parsed.coordinates && parsed.location) {
         return {
           coordinates: parsed.coordinates,
-          description: parsed.description
+          description: parsed.location
         };
       }
     }
     
-    // Fallback: try to extract coordinates from text
+    // Fallback: try to extract coordinates from text (in case AI doesn't output JSON)
     const coordMatch = responseText.match(/(\d+\.\d+)[,\s]+(-?\d+\.\d+)/);
     if (coordMatch) {
       return {
@@ -265,10 +296,10 @@ function extractLocationFromResponse(responseText) {
       };
     }
     
-    return { description: responseText };
+    return { description: "Could not parse location from response" };
   } catch (error) {
     console.error('Error parsing response:', error);
-    return { description: responseText };
+    return { description: "Error parsing location data" };
   }
 }
 

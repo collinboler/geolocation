@@ -8,6 +8,12 @@
   <div class="sidepanel-container">
     <div class="header">
       <h1>Geo Location</h1>
+      <button id="settings-button" class="settings-button">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="3"/>
+          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+        </svg>
+      </button>
     </div>
     
     <div class="main-section">
@@ -46,34 +52,48 @@
       </div>
     </div>
 
-    <div class="section">
-      <h2>Settings</h2>
-      <a href="https://platform.openai.com/api-keys" target="_blank" class="api-link">Get OpenAI Key</a>
-      <div class="input-group">
-        <input type="password" id="api-key-input" placeholder="Enter OpenAI API Key" />
-        <button id="save-api-key-button">Save</button>
-      </div>
-      
-      <div class="setting-item">
-        <label for="show-coords-switch">Show Coordinates</label>
-        <label class="switch">
-          <input type="checkbox" id="show-coords-switch">
-          <span class="slider round"></span>
-        </label>
-      </div>
-      <div class="setting-item">
-        <label for="show-map-switch">Show Map</label>
-        <label class="switch">
-          <input type="checkbox" id="show-map-switch" checked>
-          <span class="slider round"></span>
-        </label>
-      </div>
-      <div class="setting-item">
-        <label for="dark-mode-switch">Dark Mode</label>
-        <label class="switch">
-          <input type="checkbox" id="dark-mode-switch">
-          <span class="slider round"></span>
-        </label>
+    <!-- Settings Modal -->
+    <div id="settings-modal" class="modal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2>Settings</h2>
+          <button id="close-settings" class="close-button">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
+        </div>
+        
+        <div class="modal-body">
+          <a href="https://platform.openai.com/api-keys" target="_blank" class="api-link">Get OpenAI Key</a>
+          <div class="input-group">
+            <input type="password" id="api-key-input" placeholder="Enter OpenAI API Key" />
+            <button id="save-api-key-button">Save</button>
+          </div>
+          
+          <div class="setting-item">
+            <label for="show-coords-switch">Show Coordinates</label>
+            <label class="switch">
+              <input type="checkbox" id="show-coords-switch">
+              <span class="slider round"></span>
+            </label>
+          </div>
+          <div class="setting-item">
+            <label for="show-map-switch">Show Map</label>
+            <label class="switch">
+              <input type="checkbox" id="show-map-switch" checked>
+              <span class="slider round"></span>
+            </label>
+          </div>
+          <div class="setting-item">
+            <label for="dark-mode-switch">Dark Mode</label>
+            <label class="switch">
+              <input type="checkbox" id="dark-mode-switch">
+              <span class="slider round"></span>
+            </label>
+          </div>
+        </div>
       </div>
     </div>
   </div>
