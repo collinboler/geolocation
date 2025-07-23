@@ -25,6 +25,24 @@ body {
     align-items: center;
 }
 
+.header-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.header-logo {
+    width: 32px;
+    height: 32px;
+    border-radius: 6px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    transition: transform 0.2s ease;
+}
+
+.header-logo:hover {
+    transform: scale(1.1);
+}
+
 .header h1 {
     margin: 0;
     font-size: 24px;
@@ -145,24 +163,7 @@ body {
     text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
 }
 
-.extension-logo {
-    text-align: center;
-    margin-top: 24px;
-    padding: 16px 0;
-    border-top: 1px solid rgba(255, 255, 255, 0.1);
-}
 
-.extension-logo img {
-    width: 128px;
-    height: 128px;
-    border-radius: 12px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-    transition: transform 0.2s ease;
-}
-
-.extension-logo img:hover {
-    transform: scale(1.05);
-}
 
 /* Map styles */
 #map-container {

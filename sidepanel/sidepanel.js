@@ -56,6 +56,23 @@ document.addEventListener('DOMContentLoaded', () => {
     if (result.coords) {
       coordsDiv.textContent = `${result.coords.lat}, ${result.coords.lng}`;
       updateMapIframe(result.coords.lat, result.coords.lng, zoomLevel);
+    } else {
+      // Default to Laurizan Hall, Whitman College, Princeton NJ if no saved coordinates
+      const defaultCoords = {
+        lat: 40.348600,
+        lng: -74.659300
+      };
+      const defaultLocation = "Whitman College, Princeton, New Jersey, United States";
+      
+      locationWordsDiv.textContent = defaultLocation;
+      coordsDiv.textContent = `${defaultCoords.lat}, ${defaultCoords.lng}`;
+      updateMapIframe(defaultCoords.lat, defaultCoords.lng, zoomLevel);
+      
+      // Save default values to storage
+      chrome.storage.local.set({
+        coords: defaultCoords,
+        locationWords: defaultLocation
+      });
     }
   });
 
