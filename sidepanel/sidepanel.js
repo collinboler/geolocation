@@ -170,6 +170,26 @@ document.addEventListener('DOMContentLoaded', () => {
       setTimeout(() => { statusDiv.textContent = ''; }, 2000);
     });
   });
+
+  // Payment button
+  const paymentButton = document.getElementById('payment-button');
+  paymentButton.addEventListener('click', () => {
+    console.log('Payment button clicked');
+    statusDiv.textContent = 'Opening payment page...';
+    
+    // Send message to background script to open payment page
+    chrome.runtime.sendMessage({ action: 'openPaymentPage' }, (response) => {
+      console.log('Response from background:', response);
+      if (chrome.runtime.lastError) {
+        console.error('Runtime error:', chrome.runtime.lastError);
+        statusDiv.textContent = 'Payment system not available: ' + chrome.runtime.lastError.message;
+        setTimeout(() => { statusDiv.textContent = ''; }, 3000);
+      } else {
+        statusDiv.textContent = 'Payment page opened successfully!';
+        setTimeout(() => { statusDiv.textContent = ''; }, 2000);
+      }
+    });
+  });
 });
 
 // Function to toggle the visibility of coordinates based on the switch state
