@@ -6,11 +6,175 @@ body {
     color: #333;
     width: 100%;
     min-height: 100vh;
+    overflow-x: hidden;
 }
 
 .sidepanel-container {
     padding: 20px;
     max-width: 100%;
+    position: relative;
+    overflow-x: hidden;
+    min-height: 100vh;
+}
+
+/* Page navigation styles */
+.page {
+    display: none;
+    width: 100%;
+    min-height: 100vh;
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    transform: translateX(100%);
+    transition: none;
+    will-change: transform;
+    overflow-y: auto;
+    overflow-x: hidden;
+    background-color: #f8f9fa;
+    box-sizing: border-box;
+    padding: 20px;
+}
+
+.page.active {
+    display: block;
+    transform: translateX(0);
+    position: absolute;
+    transition: transform 0.5s cubic-bezier(0.4, 0.0, 0.2, 1);
+}
+
+.page.transitioning {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 1;
+    min-height: 100vh;
+    padding: 20px;
+}
+
+.page.transitioning.active {
+    z-index: 2;
+}
+
+.page.slide-out-left {
+    transform: translateX(-100%);
+    transition: transform 0.5s cubic-bezier(0.4, 0.0, 0.2, 1);
+}
+
+.page.slide-out-right {
+    transform: translateX(100%);
+    transition: transform 0.5s cubic-bezier(0.4, 0.0, 0.2, 1);
+}
+
+.page.slide-in-left {
+    transform: translateX(-100%);
+    transition: transform 0.5s cubic-bezier(0.4, 0.0, 0.2, 1);
+}
+
+.page.slide-in-right {
+    transform: translateX(100%);
+    transition: transform 0.5s cubic-bezier(0.4, 0.0, 0.2, 1);
+}
+
+.page.animate-in {
+    transform: translateX(0);
+}
+
+/* Enhanced swipe animations */
+@keyframes slideOutLeft {
+    0% {
+        transform: translateX(0);
+        opacity: 1;
+    }
+    100% {
+        transform: translateX(-100%);
+        opacity: 0.8;
+    }
+}
+
+@keyframes slideOutRight {
+    0% {
+        transform: translateX(0);
+        opacity: 1;
+    }
+    100% {
+        transform: translateX(100%);
+        opacity: 0.8;
+    }
+}
+
+@keyframes slideInLeft {
+    0% {
+        transform: translateX(-100%);
+        opacity: 0.8;
+    }
+    100% {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+@keyframes slideInRight {
+    0% {
+        transform: translateX(100%);
+        opacity: 0.8;
+    }
+    100% {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+/* Swipe feedback styles */
+.swipe-feedback {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(0, 0, 0, 0.7);
+    color: white;
+    padding: 12px 20px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    z-index: 1000;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    pointer-events: none;
+}
+
+.swipe-feedback.show {
+    opacity: 1;
+}
+
+/* Back button styles */
+.back-button {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 8px;
+    border-radius: 6px;
+    transition: background-color 0.2s;
+    color: #666;
+    margin-right: 12px;
+}
+
+.back-button:hover {
+    background-color: rgba(0, 0, 0, 0.1);
+    color: #333;
+}
+
+.back-button svg {
+    width: 20px;
+    height: 20px;
+}
+
+/* Settings content styles */
+.settings-content {
+    padding: 0;
 }
 
 .header {
@@ -342,74 +506,45 @@ input:checked + .slider:before {
     min-height: 20px;
 }
 
-/* Modal styles */
-.modal {
-    display: none;
-    position: fixed;
-    z-index: 1000;
-    left: 0;
-    top: 0;
-    width: 100%;
-    height: 100%;
-    background-color: rgba(0, 0, 0, 0.5);
-    backdrop-filter: blur(2px);
-}
-
-.modal-content {
-    background-color: #fff;
-    margin: 10% auto;
-    padding: 0;
-    border-radius: 12px;
-    width: 90%;
-    max-width: 400px;
-    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
-    animation: modalSlideIn 0.3s ease-out;
-}
-
-@keyframes modalSlideIn {
+/* Page transition animations */
+@keyframes slideInFromRight {
     from {
-        opacity: 0;
-        transform: translateY(-20px);
+        transform: translateX(100%);
     }
     to {
-        opacity: 1;
-        transform: translateY(0);
+        transform: translateX(0);
     }
 }
 
-.modal-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 20px 20px 0 20px;
-    border-bottom: 1px solid #e5e7eb;
-    margin-bottom: 20px;
+@keyframes slideOutToLeft {
+    from {
+        transform: translateX(0);
+    }
+    to {
+        transform: translateX(-100%);
+    }
 }
 
-.modal-header h2 {
-    margin: 0;
-    font-size: 20px;
+/* Settings sections styling */
+.settings-section {
+    margin-bottom: 24px;
+    padding: 16px;
+    background-color: #f8f9fa;
+    border-radius: 8px;
+    border: 1px solid #e5e7eb;
+}
+
+.settings-section h3 {
+    margin: 0 0 16px 0;
+    font-size: 16px;
     font-weight: 600;
     color: #1a1a1a;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #e5e7eb;
 }
 
-.close-button {
-    background: none;
-    border: none;
-    cursor: pointer;
-    padding: 8px;
-    border-radius: 6px;
-    transition: background-color 0.2s;
-    color: #666;
-}
-
-.close-button:hover {
-    background-color: rgba(0, 0, 0, 0.1);
-    color: #333;
-}
-
-.modal-body {
-    padding: 0 20px 20px 20px;
+.settings-section:last-of-type {
+    margin-bottom: 0;
 }
 
 .pricing-info {
@@ -563,12 +698,12 @@ input:checked + .slider:before {
     }
     
     .settings-button,
-    .close-button {
+    .back-button {
         color: #d1d5db;
     }
     
     .settings-button:hover,
-    .close-button:hover {
+    .back-button:hover {
         background-color: rgba(255, 255, 255, 0.1);
         color: #fff;
     }
@@ -589,5 +724,27 @@ input:checked + .slider:before {
     .pricing-label,
     .pricing-note {
         color: #d1d5db;
+    }
+    
+    /* Dark mode settings sections */
+    .settings-section {
+        background-color: #374151;
+        border-color: #4b5563;
+    }
+    
+    .settings-section h3 {
+        color: #e5e5e5;
+        border-bottom-color: #4b5563;
+    }
+    
+    /* Dark mode swipe feedback */
+    .swipe-feedback {
+        background: rgba(255, 255, 255, 0.9);
+        color: #1a1a1a;
+    }
+    
+    /* Dark mode page background */
+    .page {
+        background-color: #1a1a1a;
     }
 } 

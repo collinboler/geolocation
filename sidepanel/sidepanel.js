@@ -1,10 +1,11 @@
-let zoomLevel = 5; // Declare at the top level
+let zoomLevel = 9; // Declare at the top level
 
 document.addEventListener('DOMContentLoaded', () => {
   const captureButton = document.getElementById('capture-button');
   const settingsButton = document.getElementById('settings-button');
-  const closeSettingsButton = document.getElementById('close-settings');
-  const settingsModal = document.getElementById('settings-modal');
+  const backButton = document.getElementById('back-button');
+  const mainPage = document.getElementById('main-page');
+  const settingsPage = document.getElementById('settings-page');
   const saveApiKeyButton = document.getElementById('save-api-key-button');
   const apiKeyInput = document.getElementById('api-key-input');
   const statusDiv = document.getElementById('status');
@@ -17,6 +18,9 @@ document.addEventListener('DOMContentLoaded', () => {
   const showMapSwitch = document.getElementById('show-map-switch');
   const darkModeSwitch = document.getElementById('dark-mode-switch');
   const resetSessionCostButton = document.getElementById('reset-session-cost');
+
+  // Ensure main page is always shown by default
+  showMainPageWithoutAnimation();
 
   // Load settings from storage
   chrome.storage.local.get(['openaiApiKey', 'zoomLevel', 'showCoords', 'showMap', 'darkMode', 'sessionCost'], (result) => {
@@ -87,11 +91,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const apiKey = apiKeyInput.value.trim();
     if (apiKey) {
       chrome.storage.local.set({ openaiApiKey: apiKey }, () => {
-        statusDiv.textContent = 'API Key saved successfully!';
-        setTimeout(() => { statusDiv.textContent = ''; }, 3000);
+        showStatus('API Key saved successfully!');
       });
     } else {
-      statusDiv.textContent = 'Please enter a valid API Key.';
+      showStatus('Please enter a valid API Key.');
     }
   });
 
@@ -100,8 +103,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const showMap = showMapSwitch.checked;
     chrome.storage.local.set({ showMap: showMap }, () => {
       toggleMapVisibility(showMap);
-      statusDiv.textContent = showMap ? 'Map display enabled' : 'Map display disabled';
-      setTimeout(() => { statusDiv.textContent = ''; }, 2000);
+      showStatus(showMap ? 'Map display enabled' : 'Map display disabled');
     });
   });
 
@@ -110,8 +112,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const showCoords = showCoordsSwitch.checked;
     chrome.storage.local.set({ showCoords: showCoords }, () => {
       toggleCoordsVisibility(showCoords);
-      statusDiv.textContent = showCoords ? 'Coordinates display enabled' : 'Coordinates display disabled';
-      setTimeout(() => { statusDiv.textContent = ''; }, 2000);
+      showStatus(showCoords ? 'Coordinates display enabled' : 'Coordinates display disabled');
     });
   });
 
@@ -120,8 +121,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const darkMode = darkModeSwitch.checked;
     chrome.storage.local.set({ darkMode: darkMode }, () => {
       toggleDarkMode(darkMode);
-      statusDiv.textContent = darkMode ? 'Dark mode enabled' : 'Dark mode disabled';
-      setTimeout(() => { statusDiv.textContent = ''; }, 2000);
+      showStatus(darkMode ? 'Dark mode enabled' : 'Dark mode disabled');
     });
   });
 
@@ -134,43 +134,278 @@ document.addEventListener('DOMContentLoaded', () => {
       if (result.openaiApiKey) {
         captureScreen(result.openaiApiKey);
       } else {
-        statusDiv.textContent = 'Please enter your OpenAI API Key.';
+        showStatus('Please enter your OpenAI API Key.');
       }
     });
   });
 
-  // Settings modal event listeners
+  // Page navigation event listeners
   settingsButton.addEventListener('click', () => {
-    settingsModal.style.display = 'block';
+    showSettingsPage();
   });
 
-  closeSettingsButton.addEventListener('click', () => {
-    settingsModal.style.display = 'none';
+  backButton.addEventListener('click', () => {
+    showMainPage();
   });
 
-  // Close modal when clicking outside of it
-  settingsModal.addEventListener('click', (event) => {
-    if (event.target === settingsModal) {
-      settingsModal.style.display = 'none';
+  // Add swipe functionality
+  let startX = 0;
+  let currentX = 0;
+  let isDragging = false;
+  let swipeFeedback = null;
+
+  // Create swipe feedback element
+  function createSwipeFeedback() {
+    if (!swipeFeedback) {
+      swipeFeedback = document.createElement('div');
+      swipeFeedback.className = 'swipe-feedback';
+      document.body.appendChild(swipeFeedback);
+    }
+    return swipeFeedback;
+  }
+
+  // Show swipe feedback
+  function showSwipeFeedback(message) {
+    const feedback = createSwipeFeedback();
+    feedback.textContent = message;
+    feedback.classList.add('show');
+    setTimeout(() => {
+      feedback.classList.remove('show');
+    }, 800);
+  }
+
+  // Touch events for swipe
+  document.addEventListener('touchstart', (e) => {
+    startX = e.touches[0].clientX;
+    isDragging = true;
+  });
+
+  document.addEventListener('touchmove', (e) => {
+    if (!isDragging) return;
+    currentX = e.touches[0].clientX;
+    const diff = currentX - startX;
+    
+    // Prevent default scrolling when swiping
+    if (Math.abs(diff) > 10) {
+      e.preventDefault();
     }
   });
 
-  // Close modal with Escape key
-  document.addEventListener('keydown', (event) => {
-    if (event.key === 'Escape' && settingsModal.style.display === 'block') {
-      settingsModal.style.display = 'none';
+  document.addEventListener('touchend', (e) => {
+    if (!isDragging) return;
+    
+    const diff = currentX - startX;
+    const threshold = 50; // Minimum swipe distance
+    
+    if (Math.abs(diff) > threshold) {
+      if (diff > 0 && mainPage.classList.contains('active')) {
+        // Swipe right on main page - go to settings
+        showSwipeFeedback('Opening Settings...');
+        setTimeout(() => showSettingsPage(), 100);
+      } else if (diff < 0 && settingsPage.classList.contains('active')) {
+        // Swipe left on settings page - go back to main
+        showSwipeFeedback('Going Back...');
+        setTimeout(() => showMainPage(), 100);
+      }
     }
+    
+    isDragging = false;
+  });
+
+  // Mouse events for swipe (for desktop testing)
+  document.addEventListener('mousedown', (e) => {
+    startX = e.clientX;
+    isDragging = true;
+  });
+
+  document.addEventListener('mousemove', (e) => {
+    if (!isDragging) return;
+    currentX = e.clientX;
+  });
+
+  document.addEventListener('mouseup', (e) => {
+    if (!isDragging) return;
+    
+    const diff = currentX - startX;
+    const threshold = 50;
+    
+    if (Math.abs(diff) > threshold) {
+      if (diff > 0 && mainPage.classList.contains('active')) {
+        showSwipeFeedback('Opening Settings...');
+        setTimeout(() => showSettingsPage(), 100);
+      } else if (diff < 0 && settingsPage.classList.contains('active')) {
+        showSwipeFeedback('Going Back...');
+        setTimeout(() => showMainPage(), 100);
+      }
+    }
+    
+    isDragging = false;
   });
 
   // Reset session cost button
   resetSessionCostButton.addEventListener('click', () => {
     chrome.storage.local.set({ sessionCost: 0 }, () => {
       updateSessionCost(0);
-      statusDiv.textContent = 'Session cost reset to $0.00';
-      setTimeout(() => { statusDiv.textContent = ''; }, 2000);
+      showStatus('Session cost reset to $0.00');
     });
   });
 });
+
+// Page navigation functions
+function showMainPage() {
+  const mainPage = document.getElementById('main-page');
+  const settingsPage = document.getElementById('settings-page');
+  
+  // Position both pages absolutely for transition
+  mainPage.style.display = 'block';
+  mainPage.style.position = 'absolute';
+  mainPage.style.top = '0';
+  mainPage.style.left = '0';
+  mainPage.style.right = '0';
+  mainPage.style.bottom = '0';
+  mainPage.style.height = '100vh';
+  mainPage.style.transform = 'translateX(-100%)';
+  mainPage.style.transition = 'none';
+  mainPage.style.zIndex = '2';
+  mainPage.classList.add('transitioning');
+  
+  settingsPage.style.position = 'absolute';
+  settingsPage.style.top = '0';
+  settingsPage.style.left = '0';
+  settingsPage.style.right = '0';
+  settingsPage.style.bottom = '0';
+  settingsPage.style.height = '100vh';
+  settingsPage.style.zIndex = '1';
+  settingsPage.classList.add('transitioning');
+  
+  // Force a reflow
+  mainPage.offsetHeight;
+  
+  // Animate settings page out to the right
+  settingsPage.classList.remove('active');
+  settingsPage.classList.add('slide-out-right');
+  
+  // Start the main page animation
+  mainPage.style.transition = 'transform 0.5s cubic-bezier(0.4, 0.0, 0.2, 1)';
+  mainPage.style.transform = 'translateX(0)';
+  
+  setTimeout(() => {
+    mainPage.classList.add('active');
+    mainPage.classList.remove('transitioning');
+    mainPage.style.position = 'absolute';
+    mainPage.style.top = '0';
+    mainPage.style.left = '0';
+    mainPage.style.right = '0';
+    mainPage.style.bottom = '0';
+    mainPage.style.height = '100vh';
+    mainPage.style.transform = '';
+    mainPage.style.transition = '';
+    mainPage.style.zIndex = '';
+    
+    settingsPage.classList.remove('slide-out-right', 'transitioning');
+    settingsPage.style.display = 'none';
+    settingsPage.style.position = '';
+    settingsPage.style.top = '';
+    settingsPage.style.left = '';
+    settingsPage.style.right = '';
+    settingsPage.style.bottom = '';
+    settingsPage.style.height = '';
+    settingsPage.style.zIndex = '';
+  }, 500);
+}
+
+function showSettingsPage() {
+  const mainPage = document.getElementById('main-page');
+  const settingsPage = document.getElementById('settings-page');
+  
+  // Position both pages absolutely for transition
+  settingsPage.style.display = 'block';
+  settingsPage.style.position = 'absolute';
+  settingsPage.style.top = '0';
+  settingsPage.style.left = '0';
+  settingsPage.style.right = '0';
+  settingsPage.style.bottom = '0';
+  settingsPage.style.height = '100vh';
+  settingsPage.style.transform = 'translateX(100%)';
+  settingsPage.style.transition = 'none';
+  settingsPage.style.zIndex = '2';
+  settingsPage.classList.add('transitioning');
+  
+  mainPage.style.position = 'absolute';
+  mainPage.style.top = '0';
+  mainPage.style.left = '0';
+  mainPage.style.right = '0';
+  mainPage.style.bottom = '0';
+  mainPage.style.height = '100vh';
+  mainPage.style.zIndex = '1';
+  mainPage.classList.add('transitioning');
+  
+  // Force a reflow
+  settingsPage.offsetHeight;
+  
+  // Animate main page out to the left
+  mainPage.classList.remove('active');
+  mainPage.classList.add('slide-out-left');
+  
+  // Start the settings page animation
+  settingsPage.style.transition = 'transform 0.5s cubic-bezier(0.4, 0.0, 0.2, 1)';
+  settingsPage.style.transform = 'translateX(0)';
+  
+  setTimeout(() => {
+    settingsPage.classList.add('active');
+    settingsPage.classList.remove('transitioning');
+    settingsPage.style.position = 'absolute';
+    settingsPage.style.top = '0';
+    settingsPage.style.left = '0';
+    settingsPage.style.right = '0';
+    settingsPage.style.bottom = '0';
+    settingsPage.style.height = '100vh';
+    settingsPage.style.transform = '';
+    settingsPage.style.transition = '';
+    settingsPage.style.zIndex = '';
+    
+    mainPage.classList.remove('slide-out-left', 'transitioning');
+    mainPage.style.display = 'none';
+    mainPage.style.position = '';
+    mainPage.style.top = '';
+    mainPage.style.left = '';
+    mainPage.style.right = '';
+    mainPage.style.bottom = '';
+    mainPage.style.height = '';
+    mainPage.style.zIndex = '';
+  }, 500);
+}
+
+function showMainPageWithoutAnimation() {
+  const mainPage = document.getElementById('main-page');
+  const settingsPage = document.getElementById('settings-page');
+
+  // Ensure main page is visible and active with consistent positioning
+  mainPage.classList.add('active');
+  mainPage.style.position = 'absolute';
+  mainPage.style.top = '0';
+  mainPage.style.left = '0';
+  mainPage.style.right = '0';
+  mainPage.style.bottom = '0';
+  mainPage.style.height = '100vh';
+  mainPage.style.transform = '';
+  mainPage.style.transition = '';
+
+  // Ensure settings page is hidden
+  settingsPage.classList.remove('active');
+  settingsPage.classList.remove('slide-out-left');
+  settingsPage.classList.remove('slide-out-right');
+  settingsPage.style.display = 'none';
+}
+
+// Status display function
+function showStatus(message) {
+  const statusDiv = document.getElementById('status');
+  if (statusDiv) {
+    statusDiv.textContent = message;
+    setTimeout(() => { statusDiv.textContent = ''; }, 3000);
+  }
+}
 
 // Function to toggle the visibility of coordinates based on the switch state
 function toggleCoordsVisibility(showCoords) {
