@@ -128,28 +128,6 @@ body {
     }
 }
 
-/* Swipe feedback styles */
-.swipe-feedback {
-    position: fixed;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    background: rgba(0, 0, 0, 0.7);
-    color: white;
-    padding: 12px 20px;
-    border-radius: 8px;
-    font-size: 14px;
-    font-weight: 500;
-    z-index: 1000;
-    opacity: 0;
-    transition: opacity 0.3s ease;
-    pointer-events: none;
-}
-
-.swipe-feedback.show {
-    opacity: 1;
-}
-
 /* Back button styles */
 .back-button {
     background: none;
@@ -220,13 +198,15 @@ body {
     cursor: pointer;
     padding: 8px;
     border-radius: 6px;
-    transition: background-color 0.2s;
+    transition: background-color 0.2s, transform 0.2s ease, box-shadow 0.2s ease;
     color: #666;
 }
 
 .settings-button:hover {
     background-color: rgba(0, 0, 0, 0.1);
     color: #333;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
 }
 
 .main-section {
@@ -756,6 +736,8 @@ input:checked + .slider:before {
     .back-button:hover {
         background-color: rgba(255, 255, 255, 0.1);
         color: #fff;
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
     }
     
     .pricing-info {
@@ -785,12 +767,6 @@ input:checked + .slider:before {
     .settings-section h3 {
         color: #e5e5e5;
         border-bottom-color: #4b5563;
-    }
-    
-    /* Dark mode swipe feedback */
-    .swipe-feedback {
-        background: rgba(255, 255, 255, 0.9);
-        color: #1a1a1a;
     }
     
     /* Dark mode page background */
