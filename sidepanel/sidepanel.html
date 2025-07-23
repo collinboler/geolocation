@@ -25,11 +25,18 @@
         Guess
       </button>
       
-      <div id="status" class="status"></div>
       
       <div id="location-area">
-        <p id="location-text"><b>Location: </b></p>
-        <div id="location-words"></div>
+        <div class="location-card">
+          <div class="location-header">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+              <circle cx="12" cy="10" r="3"/>
+            </svg>
+            <span>Location</span>
+          </div>
+          <div id="location-words" class="location-content"></div>
+        </div>
       </div>
       
       <!-- Map container -->
@@ -47,8 +54,17 @@
 
       <!-- Coordinates area -->
       <div id="coords-area">
-        <div id="coords-text" style="display:none;"><b>Coordinates: </b></div>
-        <div id="coords" style="display:none;"></div> 
+        <div class="coords-card" style="display:none;">
+          <div class="coords-header">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+              <path d="M2 17l10 5 10-5"/>
+              <path d="M2 12l10 5 10-5"/>
+            </svg>
+            <span>Coordinates</span>
+          </div>
+          <div id="coords" class="coords-content"></div>
+        </div>
       </div>
     </div>
 

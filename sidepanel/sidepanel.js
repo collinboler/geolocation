@@ -142,14 +142,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // Function to toggle the visibility of coordinates based on the switch state
 function toggleCoordsVisibility(showCoords) {
-  const coordsDiv = document.getElementById('coords');
-  const coordsText = document.getElementById('coords-text');
+  const coordsCard = document.querySelector('.coords-card');
   if (showCoords) {
-    coordsDiv.style.display = 'block';
-    coordsText.style.display = 'inline';
+    coordsCard.style.display = 'block';
   } else {
-    coordsDiv.style.display = 'none';
-    coordsText.style.display = 'none';
+    coordsCard.style.display = 'none';
   }
 }
 
