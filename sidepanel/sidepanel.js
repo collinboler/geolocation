@@ -18,6 +18,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const showMapSwitch = document.getElementById('show-map-switch');
   const darkModeSwitch = document.getElementById('dark-mode-switch');
   const resetSessionCostButton = document.getElementById('reset-session-cost');
+  const advancedDropdownToggle = document.getElementById('advanced-dropdown-toggle');
+  const advancedSettingsDropdown = document.getElementById('advanced-settings-dropdown');
 
   // Ensure main page is always shown by default
   showMainPageWithoutAnimation();
@@ -248,6 +250,26 @@ document.addEventListener('DOMContentLoaded', () => {
       updateSessionCost(0);
       showStatus('Session cost reset to $0.00');
     });
+  });
+
+  // Advanced Settings dropdown toggle
+  advancedDropdownToggle.addEventListener('click', () => {
+    const isExpanded = advancedSettingsDropdown.classList.contains('expanded');
+    
+    if (isExpanded) {
+      advancedSettingsDropdown.classList.remove('expanded');
+      advancedDropdownToggle.classList.remove('expanded');
+    } else {
+      advancedSettingsDropdown.classList.add('expanded');
+      advancedDropdownToggle.classList.add('expanded');
+    }
+  });
+
+  // Also allow clicking on the header to toggle
+  document.getElementById('advanced-settings-header').addEventListener('click', (e) => {
+    if (e.target !== advancedDropdownToggle) {
+      advancedDropdownToggle.click();
+    }
   });
 });
 

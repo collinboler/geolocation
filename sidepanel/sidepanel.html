@@ -11,7 +11,7 @@
       <div class="header">
         <div class="header-left">
           <img src="../images/geolocationbot128.png" alt="GeoGuessr Hacker" class="header-logo" />
-          <h1>GeoGuesser Hacker</h1>
+          <h1><i>GeoGuessr Hacker</i></h1>
         </div>
         <button id="settings-button" class="settings-button">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -93,20 +93,6 @@
         <div class="settings-section">
           <h3>Display Settings</h3>
           <div class="setting-item">
-            <label for="show-coords-switch">Show Coordinates</label>
-            <label class="switch">
-              <input type="checkbox" id="show-coords-switch">
-              <span class="slider round"></span>
-            </label>
-          </div>
-          <div class="setting-item">
-            <label for="show-map-switch">Show Map</label>
-            <label class="switch">
-              <input type="checkbox" id="show-map-switch" checked>
-              <span class="slider round"></span>
-            </label>
-          </div>
-          <div class="setting-item">
             <label for="dark-mode-switch">Dark Mode</label>
             <label class="switch">
               <input type="checkbox" id="dark-mode-switch">
@@ -117,11 +103,36 @@
 
         <!-- Advanced Settings Section -->
         <div class="settings-section">
-          <h3>Advanced Settings</h3>
-          <a href="https://platform.openai.com/api-keys" target="_blank" class="api-link">Get OpenAI Key</a>
-          <div class="input-group">
-            <input type="password" id="api-key-input" placeholder="Enter OpenAI API Key" />
-            <button id="save-api-key-button">Save</button>
+          <div class="settings-header" id="advanced-settings-header">
+            <h3>Advanced Settings</h3>
+            <button class="dropdown-toggle" id="advanced-dropdown-toggle">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M6 9l6 6 6-6"/>
+              </svg>
+            </button>
+          </div>
+          <div class="settings-dropdown" id="advanced-settings-dropdown">
+            <div class="setting-item">
+              <label for="show-coords-switch">Show Coordinates</label>
+              <label class="switch">
+                <input type="checkbox" id="show-coords-switch">
+                <span class="slider round"></span>
+              </label>
+            </div>
+            <div class="setting-item">
+              <label for="show-map-switch">Show Map</label>
+              <label class="switch">
+                <input type="checkbox" id="show-map-switch" checked>
+                <span class="slider round"></span>
+              </label>
+            </div>
+            <div class="setting-item">
+              <a href="https://platform.openai.com/api-keys" target="_blank" class="api-link">Get OpenAI Key</a>
+              <div class="input-group">
+                <input type="password" id="api-key-input" placeholder="Enter OpenAI API Key" />
+                <button id="save-api-key-button">Save</button>
+              </div>
+            </div>
           </div>
         </div>
         
