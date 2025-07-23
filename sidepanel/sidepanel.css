@@ -466,6 +466,23 @@ input:checked + .slider:before {
     background-color: #b91c1c;
 }
 
+/* Loading spinner styles */
+.loading-spinner {
+    display: none;
+    width: 24px;
+    height: 24px;
+    border: 3px solid rgba(255, 255, 255, 0.3);
+    border-top: 3px solid #ffffff;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin: 0 auto;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
 /* Dark mode styles */
 @media (prefers-color-scheme: dark) {
     body {

@@ -242,7 +242,14 @@ function captureScreen(apiKey) {
 }
 
 async function processImage(dataUrl, apiKey) {
-  document.getElementById('capture-button').textContent = 'Processing image...';
+  // Show loading spinner and hide camera icon/text
+  const cameraIcon = document.getElementById('camera-icon');
+  const buttonText = document.getElementById('button-text');
+  const loadingSpinner = document.getElementById('loading-spinner');
+  
+  cameraIcon.style.display = 'none';
+  buttonText.style.display = 'none';
+  loadingSpinner.style.display = 'block';
 
   try {
     const messages = [
@@ -312,24 +319,19 @@ Your response should look something like this for example: 40.348600, -74.659300
       document.getElementById('location-words').textContent = locationData.description;
     }
 
-    document.getElementById('capture-button').innerHTML = `
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <circle cx="12" cy="12" r="3"/>
-        <path d="M20 4h-3.17l-1.24-1.35A2 2 0 0 0 14.12 2H9.88a2 2 0 0 0-1.47.65L7.17 4H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2z"/>
-      </svg>
-      Guess
-    `;
+    // Restore original button state
+    cameraIcon.style.display = 'inline';
+    buttonText.style.display = 'inline';
+    loadingSpinner.style.display = 'none';
 
   } catch (error) {
     console.error('Error:', error);
     document.getElementById('status').textContent = 'Error processing image: ' + error.message;
-    document.getElementById('capture-button').innerHTML = `
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <circle cx="12" cy="12" r="3"/>
-        <path d="M20 4h-3.17l-1.24-1.35A2 2 0 0 0 14.12 2H9.88a2 2 0 0 0-1.47.65L7.17 4H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2z"/>
-      </svg>
-      Guess
-    `;
+    
+    // Restore original button state
+    cameraIcon.style.display = 'inline';
+    buttonText.style.display = 'inline';
+    loadingSpinner.style.display = 'none';
   }
 }
 
