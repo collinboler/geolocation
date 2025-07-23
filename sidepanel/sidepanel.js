@@ -308,7 +308,7 @@ function showMainPage() {
   settingsPage.classList.add('slide-out-right');
   
   // Start the main page animation
-  mainPage.style.transition = 'transform 0.5s cubic-bezier(0.4, 0.0, 0.2, 1)';
+  mainPage.style.transition = 'transform 0.3s cubic-bezier(0.4, 0.0, 0.2, 1)';
   mainPage.style.transform = 'translateX(0)';
   
   setTimeout(() => {
@@ -319,7 +319,7 @@ function showMainPage() {
     mainPage.style.left = '0';
     mainPage.style.right = '0';
     mainPage.style.bottom = '0';
-    mainPage.style.height = '100vh';
+    mainPage.style.minHeight = '100vh';
     mainPage.style.transform = '';
     mainPage.style.transition = '';
     mainPage.style.zIndex = '';
@@ -331,9 +331,9 @@ function showMainPage() {
     settingsPage.style.left = '';
     settingsPage.style.right = '';
     settingsPage.style.bottom = '';
-    settingsPage.style.height = '';
+    settingsPage.style.minHeight = '';
     settingsPage.style.zIndex = '';
-  }, 500);
+  }, 300);
 }
 
 function showSettingsPage() {
@@ -370,7 +370,7 @@ function showSettingsPage() {
   mainPage.classList.add('slide-out-left');
   
   // Start the settings page animation
-  settingsPage.style.transition = 'transform 0.5s cubic-bezier(0.4, 0.0, 0.2, 1)';
+  settingsPage.style.transition = 'transform 0.3s cubic-bezier(0.4, 0.0, 0.2, 1)';
   settingsPage.style.transform = 'translateX(0)';
   
   setTimeout(() => {
@@ -381,7 +381,7 @@ function showSettingsPage() {
     settingsPage.style.left = '0';
     settingsPage.style.right = '0';
     settingsPage.style.bottom = '0';
-    settingsPage.style.height = '100vh';
+    settingsPage.style.minHeight = '100vh';
     settingsPage.style.transform = '';
     settingsPage.style.transition = '';
     settingsPage.style.zIndex = '';
@@ -393,9 +393,9 @@ function showSettingsPage() {
     mainPage.style.left = '';
     mainPage.style.right = '';
     mainPage.style.bottom = '';
-    mainPage.style.height = '';
+    mainPage.style.minHeight = '';
     mainPage.style.zIndex = '';
-  }, 500);
+  }, 300);
 }
 
 function showMainPageWithoutAnimation() {
