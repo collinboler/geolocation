@@ -11,9 +11,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const zoomOutButton = document.getElementById('zoom-out');
   const showCoordsSwitch = document.getElementById('show-coords-switch');
   const showMapSwitch = document.getElementById('show-map-switch');
-  const settingsButton = document.getElementById('settings-button');
-  const settingsModal = document.getElementById('settings-modal');
-  const closeSettingsButton = document.getElementById('close-settings');
+  const openSettingsButton = document.getElementById('open-settings');
   const darkModeSwitch = document.getElementById('dark-mode-switch');
 
 
@@ -96,20 +94,13 @@ document.addEventListener('DOMContentLoaded', () => {
       });
   });
 
-  // Open the settings modal when the Settings button is clicked
-  settingsButton.addEventListener('click', () => {
-    settingsModal.style.display = 'block';
-  });
-
-  // Close the settings modal when the close button is clicked
-  closeSettingsButton.addEventListener('click', () => {
-    settingsModal.style.display = 'none';
-  });
-
-  // Close the settings modal when clicking outside of it
-  window.addEventListener('click', (event) => {
-    if (event.target == settingsModal) {
-      settingsModal.style.display = 'none';
+  // Open the side panel when the Settings button is clicked
+  openSettingsButton.addEventListener('click', () => {
+    if (chrome.sidePanel && chrome.sidePanel.open) {
+      chrome.sidePanel.open({ windowId: chrome.windows.WINDOW_ID_CURRENT });
+    } else {
+      // Fallback: try to open the side panel using the action
+      chrome.action.openPopup();
     }
   });
 

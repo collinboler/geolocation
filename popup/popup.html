@@ -6,13 +6,7 @@
 </head>
 <body>
 
-  <!-- Settings button -->
-  <button id="settings-button">
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M10.325 4.317c.426 -1.756 2.924 -1.756 3.35 0a1.724 1.724 0 0 0 2.573 1.066c1.543 -.94 3.31 .826 2.37 2.37a1.724 1.724 0 0 0 1.065 2.572c1.756 .426 1.756 2.924 0 3.35a1.724 1.724 0 0 0 -1.066 2.573c.94 1.543 -.826 3.31 -2.37 2.37a1.724 1.724 0 0 0 -2.572 1.065c-.426 1.756 -2.924 1.756 -3.35 0a1.724 1.724 0 0 0 -2.573 -1.066c-1.543 .94 -3.31 -.826 -2.37 -2.37a1.724 1.724 0 0 0 -1.065 -2.572c-1.756 -.426 -1.756 -2.924 0 -3.35a1.724 1.724 0 0 0 1.066 -2.573c-.94 -1.543 .826 -3.31 2.37 -2.37c1 .608 2.296 .07 2.572 -1.065z"/>
-      <path d="M9 12a3 3 0 1 0 6 0a3 3 0 0 0 -6 0"/>
-    </svg>
-  </button>
+
 
   <h1 id="header">Geo Location</h1>
 
@@ -60,43 +54,14 @@
   
   <div id="map"></div>
 
-  <!-- Settings Modal -->
-  <div id="settings-modal" display="block" class="modal">
-    <div class="modal-content" display="flex" >
-      <span id="close-settings" class="close">&times;</span>
-      <h2 id="settings-text2">Settings</h2>
-      <a id="api-text" href="https://platform.openai.com/api-keys">Open AI Key</a>
-      <!-- API Key input -->
-      <div id="api-key-section">
-        <input type="password" id="api-key-input" placeholder="Enter OpenAI API Key" />
-        <button id="save-api-key-button">Save</button>
-      </div>
-      <!-- Show Coordinates Switch -->
-      <div class="setting-item">
-        <label for="show-coords-switch">Show Coordinates</label>
-        <label class="switch">
-          <input type="checkbox" id="show-coords-switch">
-          <span class="slider round"></span>
-        </label>
-      </div>
-      <!-- Show Map Switch -->
-      <div class="setting-item">
-        <label for="show-map-switch">Show Map</label>
-        <label class="switch">
-          <input type="checkbox" id="show-map-switch" checked>
-          <span class="slider round"></span>
-        </label>
-      </div>
-      <!-- Dark Mode Switch -->
-      <div class="setting-item">
-        <label for="dark-mode-switch">Dark Mode</label>
-        <label class="switch">
-          <input type="checkbox" id="dark-mode-switch">
-          <span class="slider round"></span>
-        </label>
-      </div>
-    </div>
-  </div>
+  <!-- Settings button to open side panel -->
+  <button id="open-settings" class="settings-btn">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M10.325 4.317c.426 -1.756 2.924 -1.756 3.35 0a1.724 1.724 0 0 0 2.573 1.066c1.543 -.94 3.31 .826 2.37 2.37a1.724 1.724 0 0 0 1.065 2.572c1.756 .426 1.756 2.924 0 3.35a1.724 1.724 0 0 0 -1.066 2.573c.94 1.543 -.826 3.31 -2.37 2.37a1.724 1.724 0 0 0 -2.572 1.065c-.426 1.756 -2.924 1.756 -3.35 0a1.724 1.724 0 0 0 -2.573 -1.066c-1.543 .94 -3.31 -.826 -2.37 -2.37a1.724 1.724 0 0 0 -1.065 -2.572c-1.756 -.426 -1.756 -2.924 0 -3.35a1.724 1.724 0 0 0 1.066 -2.573c-.94 -1.543 .826 -3.31 2.37 -2.37c1 .608 2.296 .07 2.572 -1.065z"/>
+      <path d="M9 12a3 3 0 1 0 6 0a3 3 0 0 0 -6 0"/>
+    </svg>
+    Settings
+  </button>
 
   <!-- Coordinates area -->
   <div id="coords-area">
