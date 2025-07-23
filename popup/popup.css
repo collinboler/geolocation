@@ -109,16 +109,21 @@ h1 {
 }
 
 #capture-button {
-    background-color:  #00A67E;
+    background-color: #00A67E;
     color: white;
     padding: 10px 20px;
     border: none;
     border-radius: 5px;
     font-size: 16px;
     cursor: pointer;
-    display: block;
+    display: flex;
+    align-items: center;
+    gap: 8px;
     margin: auto;
-    text-align: center;
+}
+
+#capture-button svg {
+    color: white;
 }
 
 #settings-button {
