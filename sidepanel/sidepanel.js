@@ -16,9 +16,10 @@ document.addEventListener('DOMContentLoaded', () => {
   const showCoordsSwitch = document.getElementById('show-coords-switch');
   const showMapSwitch = document.getElementById('show-map-switch');
   const darkModeSwitch = document.getElementById('dark-mode-switch');
+  const resetSessionCostButton = document.getElementById('reset-session-cost');
 
   // Load settings from storage
-  chrome.storage.local.get(['openaiApiKey', 'zoomLevel', 'showCoords', 'showMap', 'darkMode'], (result) => {
+  chrome.storage.local.get(['openaiApiKey', 'zoomLevel', 'showCoords', 'showMap', 'darkMode', 'sessionCost'], (result) => {
     if (result.openaiApiKey) {
       apiKeyInput.value = result.openaiApiKey;
     }
@@ -45,6 +46,11 @@ document.addEventListener('DOMContentLoaded', () => {
     } else {
       darkModeSwitch.checked = false;
       toggleDarkMode(false);
+    }
+    
+    // Load session cost
+    if (result.sessionCost !== undefined) {
+      updateSessionCost(result.sessionCost);
     }
   });
 
@@ -154,6 +160,15 @@ document.addEventListener('DOMContentLoaded', () => {
     if (event.key === 'Escape' && settingsModal.style.display === 'block') {
       settingsModal.style.display = 'none';
     }
+  });
+
+  // Reset session cost button
+  resetSessionCostButton.addEventListener('click', () => {
+    chrome.storage.local.set({ sessionCost: 0 }, () => {
+      updateSessionCost(0);
+      statusDiv.textContent = 'Session cost reset to $0.00';
+      setTimeout(() => { statusDiv.textContent = ''; }, 2000);
+    });
   });
 });
 
@@ -272,6 +287,14 @@ Your response should look something like this for example: 40.348600, -74.659300
     const data = await response.json();
     const responseText = data.choices[0].message.content;
     
+    // Calculate cost based on token usage
+    const tokensUsed = data.usage.total_tokens;
+    const costPerToken = 2.50 / 1000000; // $2.50 per 1M tokens for GPT-4o
+    const analysisCost = tokensUsed * costPerToken;
+    
+    // Update cost display and save to storage
+    updateCostDisplay(tokensUsed, analysisCost);
+    
     const locationData = extractLocationFromResponse(responseText);
     
     if (locationData.coordinates) {
@@ -360,4 +383,24 @@ function updateZoomLevel(zoomLevel) {
       }
     });
   });
+}
+
+function updateCostDisplay(tokensUsed, analysisCost) {
+  // Update last analysis cost
+  document.getElementById('tokens-used').textContent = tokensUsed.toLocaleString();
+  document.getElementById('analysis-cost').textContent = `$${analysisCost.toFixed(6)}`;
+  
+  // Update session total
+  chrome.storage.local.get(['sessionCost'], (result) => {
+    const currentSessionCost = result.sessionCost || 0;
+    const newSessionCost = currentSessionCost + analysisCost;
+    
+    chrome.storage.local.set({ sessionCost: newSessionCost }, () => {
+      updateSessionCost(newSessionCost);
+    });
+  });
+}
+
+function updateSessionCost(sessionCost) {
+  document.getElementById('session-cost').textContent = `$${sessionCost.toFixed(6)}`;
 } 

@@ -404,6 +404,68 @@ input:checked + .slider:before {
     padding: 0 20px 20px 20px;
 }
 
+.pricing-info {
+    margin-top: 24px;
+    padding: 16px;
+    background-color: #f8f9fa;
+    border-radius: 8px;
+    border: 1px solid #e5e7eb;
+}
+
+.pricing-info h3 {
+    margin: 0 0 12px 0;
+    font-size: 16px;
+    font-weight: 600;
+    color: #1a1a1a;
+}
+
+.pricing-details {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.pricing-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.pricing-label {
+    font-size: 14px;
+    color: #6b7280;
+}
+
+.pricing-value {
+    font-size: 14px;
+    font-weight: 500;
+    color: #1a1a1a;
+}
+
+.pricing-note {
+    font-size: 12px;
+    color: #6b7280;
+    font-style: italic;
+    margin-top: 8px;
+    line-height: 1.4;
+}
+
+.reset-cost-button {
+    margin-top: 12px;
+    padding: 6px 12px;
+    background-color: #dc2626;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    font-size: 12px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.reset-cost-button:hover {
+    background-color: #b91c1c;
+}
+
 /* Dark mode styles */
 @media (prefers-color-scheme: dark) {
     body {
@@ -484,5 +546,23 @@ input:checked + .slider:before {
     .close-button:hover {
         background-color: rgba(255, 255, 255, 0.1);
         color: #fff;
+    }
+    
+    .pricing-info {
+        background-color: #374151;
+        border-color: #4b5563;
+    }
+    
+    .pricing-info h3 {
+        color: #e5e5e5;
+    }
+    
+    .pricing-value {
+        color: #e5e5e5;
+    }
+    
+    .pricing-label,
+    .pricing-note {
+        color: #d1d5db;
     }
 } 
