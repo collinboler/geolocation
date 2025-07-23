@@ -1,0 +1,45 @@
+Collin G. Boler
+
+collinboler.com | (973)-533-8028 | collinboler@princeton.edu
+EDUCATION
+Princeton University										      Princeton, NJ
+GPA: 3.5 (Present Year), 3.3 (Cumulative)				            	                         Expected May 2027
+Major in Computer Science, Minor in Finance, Statistics and Machine Learning	            
+Relevant Coursework: Advanced Programming Techniques, Algorithms and Data Structures, Programming Systems, Microeconomics, Linear Algebra, Multivariable Calculus
+
+
+TECHNICAL SKILLS
+Languages: Java, Python, C, C++, Javascript/HTML/CSS, Typescript, SQL, SOQL, Apex, Bash
+Frameworks and Libraries: Next.js, React, Spring, Node.js, Express.js, PyTorch, Tensorflow, Flask
+Tools: Git, Docker, AWS (S3, EC2), CI/CD, ARM, Postman
+
+
+EXPERIENCE
+Credit Benchmark									                   New York, NY
+Incoming Quantitative Development Intern				 	                       June - August 2025
+Will leverage data science, machine learning, and software engineering to analyze credit risk and forecast macroeconomic trends
+1440.io									            	                                 Park City, UT
+Software Engineering Intern	  					  	        	            June - August 2024
+Contributed to the development and maintenance of Salesforce-based applications for clients including Lowe's, Formula One, Estée Lauder, and Lego
+Implemented software improvements by engineering solutions in Javascript, HTML/CSS, Apex, and SQL 
+Developed solutions to transcribe, translate, synthesize speech, and generate AI response recommendations, improving clients’ customer outreach productivity by >50%
+Viralgo.ai             									                    Princeton, NJ
+Co-Founder and CTO							 	                January 2024 - Present
+Architect and ship a highly scalable, full-stack AI social media video automation platform using a Next.js/TypeScript frontend and FastAPI Python backend, backed by a PostgreSQL data layer and AWS S3 for media storage — reducing our user’s average video creation time by ~90%
+Build an event-driven, asynchronous pipeline with job queues, status tracking, and parallelized rendering
+Deploy on Render and Vercel, implement oAuth authentication with Clerk, and define REST APIs — enabling secure infrastructure with 99.9% uptime and seamless CI/CD
+
+
+PROJECTS
+3rd Place - Sentient AGI Real Revenue Hackathon	                          	 	                             	   
+Planned, developed, and launched a full stack (Next.js/Node.js, FastAPI Python, PostgreSQL) web application – complete with oAuth authentication and Stripe payment processing – that utilizes Sentient’s open source generative AI model in order to businesses time on advertising
+Generated $155 through the web app within the hackathon’s time frame
+
+AI Geolocation Chrome Extension                                                                               		
+https://github.com/collinboler/geolocation
+Developed a Chrome extension leveraging computer vision apis to analyze screen images and identify precise geographic locations
+Implemented an interactive Google Maps interface using Google Maps APIs that displays AI-determined coordinates, designed to enhance gameplay in geography-based games
+Launched publicly on Chrome Web Store with 3,500+ downloads and 1,000+ daily users
+
+INTERESTS
+Running (3:59 mile PR), Surfing, rock climbing (V5/V6 Bouldering Level), photography,

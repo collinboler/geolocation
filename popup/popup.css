@@ -52,9 +52,44 @@ h1 {
     font-size: 12px;
 }
 
+#map-container {
+    position: relative;
+    width: 100%;
+}
+
 #zoom-controls {
-    text-align: center;
-    margin-top: 0px;
+    position: absolute;
+    right: 10px;
+    bottom: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    background: rgba(255, 255, 255, 0.8);
+    padding: 4px;
+    border-radius: 4px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+#zoom-in, #zoom-out {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 8px;
+    border-radius: 4px;
+    transition: background-color 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+#zoom-in:hover, #zoom-out:hover {
+    background-color: rgba(0, 0, 0, 0.1);
+}
+
+#zoom-in svg, #zoom-out svg {
+    width: 16px;
+    height: 16px;
+    color: #333;
 }
 
 #coords-area, #location-area {
@@ -90,8 +125,22 @@ h1 {
     position: fixed;
     top: 10px;
     right: 10px;
-    font-size: 15px;
-    font-weight: bold;
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 8px;
+    border-radius: 4px;
+    transition: background-color 0.2s;
+}
+
+#settings-button:hover {
+    background-color: rgba(0, 0, 0, 0.1);
+}
+
+#settings-button svg {
+    width: 16px;
+    height: 16px;
+    color: #333;
 }
 
 /* Modal styling */
@@ -234,4 +283,24 @@ body.dark-mode .close {
 
 body.dark-mode #settings-button {
     color: #303232;
+}
+
+body.dark-mode #settings-button:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+body.dark-mode #settings-button svg {
+    color: #fff;
+}
+
+body.dark-mode #zoom-controls {
+    background: rgba(0, 0, 0, 0.7);
+}
+
+body.dark-mode #zoom-in:hover, body.dark-mode #zoom-out:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+body.dark-mode #zoom-in svg, body.dark-mode #zoom-out svg {
+    color: #fff;
 }
