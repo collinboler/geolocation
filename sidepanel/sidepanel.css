@@ -4,6 +4,8 @@ body {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     background-color: #f8f9fa;
     color: #333;
+    width: 100%;
+    min-height: 100vh;
 }
 
 .sidepanel-container {
@@ -24,6 +26,10 @@ body {
     color: #1a1a1a;
 }
 
+.main-section {
+    margin-bottom: 32px;
+}
+
 .section {
     margin-bottom: 32px;
 }
@@ -35,6 +41,107 @@ body {
     color: #1a1a1a;
 }
 
+/* Main functionality styles */
+#capture-button {
+    background-color: #00A67E;
+    color: white;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 5px;
+    font-size: 16px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0 auto 16px auto;
+    width: 100%;
+    justify-content: center;
+}
+
+#capture-button svg {
+    color: white;
+}
+
+#capture-button:hover {
+    background-color: #008f6b;
+}
+
+#location-area {
+    display: flex;
+    align-items: center;
+    margin: 16px 0;
+    gap: 7px;
+}
+
+#location-text {
+    padding-left: 10px;
+    font-size: 13px;
+    margin: 0;
+}
+
+#location-words {
+    font-size: 14px;
+    color: #666;
+}
+
+/* Map styles */
+#map-container {
+    position: relative;
+    width: 100%;
+    margin: 16px 0;
+}
+
+#zoom-controls {
+    position: absolute;
+    right: 10px;
+    bottom: 10px;
+    display: none; /* Hide our custom zoom controls since Google Maps has its own */
+    flex-direction: column;
+    gap: 4px;
+    background: rgba(255, 255, 255, 0.8);
+    padding: 4px;
+    border-radius: 4px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+#zoom-in, #zoom-out {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 8px;
+    border-radius: 4px;
+    transition: background-color 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+#zoom-in:hover, #zoom-out:hover {
+    background-color: rgba(0, 0, 0, 0.1);
+}
+
+#zoom-in svg, #zoom-out svg {
+    width: 16px;
+    height: 16px;
+    color: #333;
+}
+
+#coords-area {
+    margin: 16px 0;
+}
+
+#coords-text {
+    padding-left: 10px;
+    font-size: 12px;
+}
+
+#coords {
+    padding-left: 10px;
+    font-size: 12px;
+    color: #0066cc;
+}
+
+/* Settings styles */
 .api-link {
     display: inline-block;
     color: #0066cc;

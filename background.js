@@ -1,8 +1,7 @@
-// Configure side panel behavior - don't auto-open on action click
-chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: false });
+// Configure side panel behavior
+chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true });
 
-// Listen for action clicks to open the popup (default behavior)
+// Listen for action clicks to open the side panel
 chrome.action.onClicked.addListener((tab) => {
-  // This will open the popup by default
-  // The side panel can be opened from within the popup
+  chrome.sidePanel.open({ windowId: tab.windowId });
 }); 
