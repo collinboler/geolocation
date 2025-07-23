@@ -133,21 +133,29 @@ body {
     background: none;
     border: none;
     cursor: pointer;
-    padding: 8px;
+    padding: 6px;
     border-radius: 6px;
-    transition: background-color 0.2s;
+    transition: background-color 0.2s, transform 0.2s ease, box-shadow 0.2s ease;
     color: #666;
     margin-right: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 32px;
+    min-height: 32px;
 }
 
 .back-button:hover {
     background-color: rgba(0, 0, 0, 0.1);
     color: #333;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
 }
 
 .back-button svg {
     width: 20px;
     height: 20px;
+    pointer-events: none;
 }
 
 /* Settings content styles */
