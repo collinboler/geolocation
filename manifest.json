@@ -15,6 +15,7 @@
         "https://api.openai.com/*",
         "https://people.googleapis.com/*",
         "https://www.googleapis.com/*",
+        "https://*.uc.a.run.app/*",
         "<all_urls>"
     ],
     "action": {

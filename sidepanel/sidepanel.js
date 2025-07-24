@@ -6,8 +6,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const backButton = document.getElementById('back-button');
   const mainPage = document.getElementById('main-page');
   const settingsPage = document.getElementById('settings-page');
-  const saveApiKeyButton = document.getElementById('save-api-key-button');
-  const apiKeyInput = document.getElementById('api-key-input');
+
   const statusDiv = document.getElementById('status');
   const locationWordsDiv = document.getElementById('location-words');
   const coordsDiv = document.getElementById('coords');
@@ -25,10 +24,7 @@ document.addEventListener('DOMContentLoaded', () => {
   showMainPageWithoutAnimation();
 
   // Load settings from storage
-  chrome.storage.local.get(['openaiApiKey', 'zoomLevel', 'showCoords', 'showMap', 'darkMode', 'sessionCost'], (result) => {
-    if (result.openaiApiKey) {
-      apiKeyInput.value = result.openaiApiKey;
-    }
+  chrome.storage.local.get(['zoomLevel', 'showCoords', 'showMap', 'darkMode', 'sessionCost'], (result) => {
     if (result.zoomLevel !== undefined) {
       zoomLevel = result.zoomLevel;
     }
@@ -88,17 +84,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // Save API key
-  saveApiKeyButton.addEventListener('click', () => {
-    const apiKey = apiKeyInput.value.trim();
-    if (apiKey) {
-      chrome.storage.local.set({ openaiApiKey: apiKey }, () => {
-        showStatus('API Key saved successfully!');
-      });
-    } else {
-      showStatus('Please enter a valid API Key.');
-    }
-  });
+
 
   // Toggle map display
   showMapSwitch.addEventListener('change', () => {
@@ -132,12 +118,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Capture button event listener
   captureButton.addEventListener('click', () => {
-    chrome.storage.local.get(['openaiApiKey'], (result) => {
-      if (result.openaiApiKey) {
-        captureScreen(result.openaiApiKey);
-      } else {
-        showStatus('Please enter your OpenAI API Key.');
+    // Check if user is signed in
+    if (!currentUser) {
+      showStatus('Please sign in to use the analysis feature.');
+      return;
+    }
+    
+    chrome.storage.local.get(['userStatus'], (result) => {
+      // Check rate limiting
+      if (result.userStatus && !checkRateLimit(result.userStatus)) {
+        showUpgradePrompt();
+        return;
       }
+      
+      captureScreen(); // No API key needed anymore
     });
   });
 
@@ -148,6 +142,33 @@ document.addEventListener('DOMContentLoaded', () => {
 
   backButton.addEventListener('click', () => {
     showMainPage();
+  });
+
+  // Upgrade page navigation
+  const upgradeButton = document.getElementById('upgrade-button');
+  const backToSettingsButton = document.getElementById('back-to-settings-button');
+  
+  if (upgradeButton) {
+    upgradeButton.addEventListener('click', () => {
+      showUpgradePage();
+    });
+  }
+  
+  if (backToSettingsButton) {
+    backToSettingsButton.addEventListener('click', () => {
+      showSettingsPage();
+    });
+  }
+
+  // Plan selection buttons
+  const planButtons = document.querySelectorAll('.plan-button[data-plan]');
+  planButtons.forEach(button => {
+    button.addEventListener('click', (e) => {
+      const plan = e.target.getAttribute('data-plan');
+      if (plan && currentUser) {
+        initiateUpgrade(plan);
+      }
+    });
   });
 
   // Reset session cost button
@@ -248,6 +269,11 @@ function showMainPage() {
 function showSettingsPage() {
   const mainPage = document.getElementById('main-page');
   const settingsPage = document.getElementById('settings-page');
+  const upgradePage = document.getElementById('upgrade-page');
+  
+  // Hide upgrade page if it's currently visible
+  upgradePage.classList.remove('active');
+  upgradePage.style.display = 'none';
   
   // Position both pages absolutely for transition
   settingsPage.style.display = 'block';
@@ -274,9 +300,10 @@ function showSettingsPage() {
   // Force a reflow
   settingsPage.offsetHeight;
   
-  // Animate main page out to the left
-  mainPage.classList.remove('active');
-  mainPage.classList.add('slide-out-left');
+  // Animate main page out to the left (or upgrade page if coming from there)
+  const currentlyActive = upgradePage.classList.contains('active') ? upgradePage : mainPage;
+  currentlyActive.classList.remove('active');
+  currentlyActive.classList.add('slide-out-left');
   
   // Start the settings page animation
   settingsPage.style.transition = 'transform 0.3s cubic-bezier(0.4, 0.0, 0.2, 1)';
@@ -310,6 +337,7 @@ function showSettingsPage() {
 function showMainPageWithoutAnimation() {
   const mainPage = document.getElementById('main-page');
   const settingsPage = document.getElementById('settings-page');
+  const upgradePage = document.getElementById('upgrade-page');
 
   // Ensure main page is visible and active with consistent positioning
   mainPage.classList.add('active');
@@ -322,11 +350,79 @@ function showMainPageWithoutAnimation() {
   mainPage.style.transform = '';
   mainPage.style.transition = '';
 
-  // Ensure settings page is hidden
+  // Ensure other pages are hidden
   settingsPage.classList.remove('active');
   settingsPage.classList.remove('slide-out-left');
   settingsPage.classList.remove('slide-out-right');
   settingsPage.style.display = 'none';
+
+  upgradePage.classList.remove('active');
+  upgradePage.style.display = 'none';
+}
+
+function showUpgradePage() {
+  const settingsPage = document.getElementById('settings-page');
+  const upgradePage = document.getElementById('upgrade-page');
+  
+  // Update plan cards based on current user status
+  updatePlanCards();
+  
+  // Position both pages absolutely for transition
+  upgradePage.style.display = 'block';
+  upgradePage.style.position = 'absolute';
+  upgradePage.style.top = '0';
+  upgradePage.style.left = '0';
+  upgradePage.style.right = '0';
+  upgradePage.style.bottom = '0';
+  upgradePage.style.height = '100vh';
+  upgradePage.style.transform = 'translateX(100%)';
+  upgradePage.style.transition = 'none';
+  upgradePage.style.zIndex = '2';
+  upgradePage.classList.add('transitioning');
+  
+  settingsPage.style.position = 'absolute';
+  settingsPage.style.top = '0';
+  settingsPage.style.left = '0';
+  settingsPage.style.right = '0';
+  settingsPage.style.bottom = '0';
+  settingsPage.style.height = '100vh';
+  settingsPage.style.zIndex = '1';
+  settingsPage.classList.add('transitioning');
+  
+  // Force a reflow
+  upgradePage.offsetHeight;
+  
+  // Animate settings page out to the left
+  settingsPage.classList.remove('active');
+  settingsPage.classList.add('slide-out-left');
+  
+  // Start the upgrade page animation
+  upgradePage.style.transition = 'transform 0.3s cubic-bezier(0.4, 0.0, 0.2, 1)';
+  upgradePage.style.transform = 'translateX(0)';
+  
+  setTimeout(() => {
+    upgradePage.classList.add('active');
+    upgradePage.classList.remove('transitioning');
+    upgradePage.style.position = 'absolute';
+    upgradePage.style.top = '0';
+    upgradePage.style.left = '0';
+    upgradePage.style.right = '0';
+    upgradePage.style.bottom = '0';
+    upgradePage.style.minHeight = '100vh';
+    upgradePage.style.transform = '';
+    upgradePage.style.transition = '';
+    upgradePage.style.zIndex = '';
+    
+    settingsPage.classList.remove('slide-out-left', 'transitioning');
+    settingsPage.style.display = 'none';
+    settingsPage.style.position = '';
+    settingsPage.style.top = '';
+    settingsPage.style.left = '';
+    settingsPage.style.right = '';
+    settingsPage.style.bottom = '';
+    settingsPage.style.minHeight = '';
+    settingsPage.style.zIndex = '';
+  }, 300);
 }
 
 // Status display function
@@ -368,7 +464,7 @@ function toggleMapVisibility(showMap) {
   }
 }
 
-function captureScreen(apiKey) {
+function captureScreen() {
   // Get current tab info
   chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
     const currentTab = tabs[0];
@@ -376,7 +472,7 @@ function captureScreen(apiKey) {
     // Capture the visible tab content
     chrome.tabs.captureVisibleTab(currentTab.windowId, { format: 'png' }, (dataUrl) => {
       if (chrome.runtime.lastError) {
-        document.getElementById('status').textContent = 'Error capturing screen: ' + chrome.runtime.lastError.message;
+        showStatus('Error capturing screen: ' + chrome.runtime.lastError.message);
         return;
       }
       
@@ -399,7 +495,7 @@ function captureScreen(apiKey) {
         
         // Convert cropped canvas to data URL
         const croppedDataUrl = canvas.toDataURL('image/png');
-        processImage(croppedDataUrl, apiKey);
+        processImage(croppedDataUrl); // No API key needed
       };
       
       img.src = dataUrl;
@@ -407,7 +503,7 @@ function captureScreen(apiKey) {
   });
 }
 
-async function processImage(dataUrl, apiKey) {
+async function processImage(dataUrl) {
   // Show loading spinner and hide camera icon/text
   const cameraIcon = document.getElementById('camera-icon');
   const buttonText = document.getElementById('button-text');
@@ -418,55 +514,29 @@ async function processImage(dataUrl, apiKey) {
   loadingSpinner.style.display = 'block';
 
   try {
-    const messages = [
-      {
-        role: "user",
-        content: [
-          {
-            type: "text",
-
-            /*             text: "Guess this location's exact coordinates, and only output the coordinates of your best guess followed by the location's name or general regional location.  \
-This is for the game geoguessr, so use all the metas that a pro would use, and answer asap! \
-Your response should look something like this for example: 40.348600, -74.659300 Nassau Hall Princeton, New Jersey, United States."  */
-            text: "Guess this location's exact coordinates, and only output the coordinates of your best guess followed by the location's name or general regional location. This is for the game geoguessr, so use all the metas that a pro would use, and answer asap! Output your response in this JSON format only: {\"coordinates\": {\"lat\": 40.348600, \"lng\": -74.659300}, \"location\": \"Nassau Hall Princeton, New Jersey, United States\"} ALWAYS OUTPUT SOME JSON GUESS, EVEN IF YOU ARE NOT 100% CERTAIN. Take your best guess for sure though, just in edge cases." 
-          },
-          {
-            type: "image_url",
-            image_url: {
-              url: dataUrl
-            }
-          }
-        ]
-      }
-    ];
-
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`
-      },
-      body: JSON.stringify({
-        model: 'gpt-4o',
-        messages: messages,
-        max_tokens: 500
-      })
-    });
-
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
+    // Check if user is signed in
+    if (!currentUser) {
+      throw new Error('Please sign in to use the analysis feature');
     }
 
-    const data = await response.json();
-    const responseText = data.choices[0].message.content;
+    // Call Firebase Cloud Function instead of OpenAI directly
+    const result = await callFirebaseFunction('analyzeImage', {
+      imageData: dataUrl
+    });
     
-    // Calculate cost based on token usage
-    const tokensUsed = data.usage.total_tokens;
-    const costPerToken = 2.50 / 1000000; // $2.50 per 1M tokens for GPT-4o
-    const analysisCost = tokensUsed * costPerToken;
+    if (result.error) {
+      throw new Error(result.error);
+    }
+    
+    const responseText = result.response;
+    const tokensUsed = result.tokensUsed;
+    const analysisCost = result.cost;
     
     // Update cost display and save to storage
     updateCostDisplay(tokensUsed, analysisCost);
+    
+    // Refresh user status after usage
+    checkUserStatus();
     
     const locationData = extractLocationFromResponse(responseText);
     
@@ -492,7 +562,7 @@ Your response should look something like this for example: 40.348600, -74.659300
 
   } catch (error) {
     console.error('Error:', error);
-    document.getElementById('status').textContent = 'Error processing image: ' + error.message;
+    showStatus('Error: ' + error.message);
     
     // Restore original button state
     cameraIcon.style.display = 'inline';
@@ -500,6 +570,69 @@ Your response should look something like this for example: 40.348600, -74.659300
     loadingSpinner.style.display = 'none';
   }
 }
+
+// Helper function to call Firebase Cloud Functions via HTTP
+async function callFirebaseFunction(functionName, data) {
+  try {
+    // Get the current user's Google OAuth token
+    const googleToken = await new Promise((resolve, reject) => {
+      // Try non-interactive first, then interactive if needed
+      chrome.identity.getAuthToken({ interactive: false }, (token) => {
+        if (chrome.runtime.lastError || !token) {
+          // If non-interactive fails, try interactive
+          chrome.identity.getAuthToken({ interactive: true }, (interactiveToken) => {
+            if (chrome.runtime.lastError) {
+              reject(chrome.runtime.lastError);
+            } else if (!interactiveToken) {
+              reject(new Error('Failed to get authentication token'));
+            } else {
+              resolve(interactiveToken);
+            }
+          });
+        } else {
+          resolve(token);
+        }
+      });
+    });
+
+    // Firebase Cloud Function URLs (updated to new Cloud Run format)
+    const functionUrls = {
+      'getUserStatus': 'https://getuserstatus-yw2af4l42q-uc.a.run.app',
+      'analyzeImage': 'https://analyzeimage-yw2af4l42q-uc.a.run.app',
+      'createCheckoutSession': 'https://createcheckoutsession-yw2af4l42q-uc.a.run.app'
+    };
+    
+    const functionUrl = functionUrls[functionName];
+    if (!functionUrl) {
+      throw new Error(`Unknown function: ${functionName}`);
+    }
+    
+    // Call Firebase Cloud Function via HTTP with Google OAuth token
+    const response = await fetch(functionUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${googleToken}`
+      },
+      body: JSON.stringify({
+        data: data
+      })
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`);
+    }
+
+    const result = await response.json();
+    return result.result || result;
+  } catch (error) {
+    console.error('Firebase function call failed:', error);
+    throw error;
+  }
+}
+
+// Note: We now use Google OAuth tokens directly with Firebase Functions
 
 function extractLocationFromResponse(responseText) {
   try {
@@ -599,10 +732,259 @@ function checkAuthState() {
     if (result.userProfile) {
       currentUser = result.userProfile;
       updateAuthUI(true);
+      // Check user's subscription status and usage
+      checkUserStatus();
     } else {
       updateAuthUI(false);
     }
   });
+}
+
+// Check user status for rate limiting
+async function checkUserStatus() {
+  if (!currentUser) return;
+  
+  try {
+    const userStatus = await callFirebaseFunction('getUserStatus', {
+      userId: currentUser.id,
+      email: currentUser.email
+    });
+    
+    // Store user status for rate limiting
+    chrome.storage.local.set({
+      userStatus: userStatus
+    });
+    
+    // Update UI based on subscription status
+    updateUserStatusUI(userStatus);
+    
+  } catch (error) {
+    console.error('Failed to check user status:', error);
+  }
+}
+
+// Update plan cards based on user subscription status
+function updatePlanCards() {
+  chrome.storage.local.get(['userStatus'], (result) => {
+    const userStatus = result.userStatus || { subscriptionType: 'free' };
+    const subscriptionType = userStatus.subscriptionType || 'free';
+    
+    // Reset all plan cards
+    const planCards = document.querySelectorAll('.plan-card');
+    const planButtons = document.querySelectorAll('.plan-button');
+    
+    planCards.forEach(card => {
+      card.classList.remove('current-plan');
+    });
+    
+    planButtons.forEach(button => {
+      button.classList.remove('current');
+      button.disabled = false;
+      
+      const plan = button.getAttribute('data-plan');
+      if (plan) {
+        button.textContent = `Upgrade to ${plan === 'pro' ? 'Pro' : 'Pro+'}`;
+      }
+    });
+    
+    // Mark current plan
+    if (subscriptionType === 'free') {
+      const freeCard = document.getElementById('free-plan');
+      const freeButton = freeCard.querySelector('.plan-button');
+      freeCard.classList.add('current-plan');
+      freeButton.classList.add('current');
+      freeButton.disabled = true;
+      freeButton.textContent = 'Current Plan';
+    } else if (subscriptionType === 'pro') {
+      const proCard = document.getElementById('pro-plan');
+      const proButton = proCard.querySelector('.plan-button');
+      proCard.classList.add('current-plan');
+      proButton.classList.add('current');
+      proButton.disabled = true;
+      proButton.textContent = 'Current Plan';
+      
+      // Update Pro+ button to show as upgrade
+      const proPlusButton = document.querySelector('[data-plan="pro_plus"]');
+      proPlusButton.textContent = 'Upgrade to Pro+';
+    } else if (subscriptionType === 'pro_plus') {
+      const proPlusCard = document.getElementById('pro-plus-plan');
+      const proPlusButton = proPlusCard.querySelector('.plan-button');
+      proPlusCard.classList.add('current-plan');
+      proPlusButton.classList.add('current');
+      proPlusButton.disabled = true;
+      proPlusButton.textContent = 'Current Plan';
+      
+      // Disable Pro button since they already have a higher tier
+      const proButton = document.querySelector('[data-plan="pro"]');
+      proButton.disabled = true;
+      proButton.textContent = 'Downgrade (Contact Support)';
+    }
+  });
+}
+
+// Initiate upgrade process
+async function initiateUpgrade(plan) {
+  if (!currentUser) {
+    showStatus('Please sign in to upgrade your plan.');
+    return;
+  }
+  
+  try {
+    showStatus('Preparing checkout...');
+    
+    // Call Firebase function to create Stripe checkout session
+    const result = await callFirebaseFunction('createCheckoutSession', {
+      userId: currentUser.id,
+      email: currentUser.email,
+      plan: plan
+    });
+    
+    if (result.sessionId && result.url) {
+      // Open Stripe checkout in a new tab
+      chrome.tabs.create({ url: result.url });
+      showStatus('Redirecting to checkout...');
+    } else {
+      throw new Error('Failed to create checkout session');
+    }
+  } catch (error) {
+    console.error('Upgrade error:', error);
+    showStatus('Error: ' + error.message);
+  }
+}
+
+// Update UI based on user subscription status
+function updateUserStatusUI(userStatus) {
+  // You can add subscription status indicators here
+  const accountSection = document.querySelector('.settings-section h3');
+  if (userStatus.subscriptionType === 'pro_plus') {
+    accountSection.innerHTML = 'Account <span style="color: #EA4335; font-size: 12px;">PRO+</span>';
+  } else if (userStatus.subscriptionType === 'pro') {
+    accountSection.innerHTML = 'Account <span style="color: #34A853; font-size: 12px;">PRO</span>';
+  } else {
+    accountSection.innerHTML = 'Account <span style="color: #9AA0A6; font-size: 12px;">FREE</span>';
+  }
+  
+  // Update usage display
+  const period = userStatus.subscriptionType === 'free' ? 'week' : 'month';
+  const usage = userStatus.subscriptionType === 'free' ? userStatus.weeklyUsage : userStatus.monthlyUsage;
+  const remaining = userStatus.usageLimit - usage;
+  console.log(`Usage: ${usage}/${userStatus.usageLimit} per ${period} (${remaining} remaining)`);
+  
+  // Update visual usage display
+  const usageDisplay = document.getElementById('usage-display');
+  const usageText = document.getElementById('usage-text');
+  
+  if (usageDisplay && usageText) {
+    usageDisplay.style.display = 'block';
+    const periodText = period === 'week' ? 'this week' : 'this month';
+    usageText.textContent = `${usage}/${userStatus.usageLimit} analyses ${periodText} (${remaining} remaining)`;
+    
+    // Change color based on usage
+    if (remaining === 0) {
+      usageDisplay.style.background = 'rgba(239, 68, 68, 0.1)';
+      usageDisplay.style.borderColor = 'rgba(239, 68, 68, 0.2)';
+      usageText.style.color = '#EF4444';
+    } else if (remaining <= Math.ceil(userStatus.usageLimit * 0.2)) {
+      usageDisplay.style.background = 'rgba(245, 158, 11, 0.1)';
+      usageDisplay.style.borderColor = 'rgba(245, 158, 11, 0.2)';
+      usageText.style.color = '#F59E0B';
+    } else {
+      usageDisplay.style.background = 'rgba(52, 168, 83, 0.1)';
+      usageDisplay.style.borderColor = 'rgba(52, 168, 83, 0.2)';
+      usageText.style.color = '#34A853';
+    }
+  }
+}
+
+// Check if user has exceeded rate limits
+function checkRateLimit(userStatus) {
+  const now = new Date();
+  const today = now.toDateString();
+  
+  // Free tier: 5 queries per day
+  // Premium tier: unlimited
+  if (userStatus.subscriptionType === 'premium') {
+    return true;
+  }
+  
+  // Check usage based on subscription type
+  if (userStatus.subscriptionType === 'free') {
+    return userStatus.weeklyUsage < 7; // 7 per week
+  } else if (userStatus.subscriptionType === 'pro') {
+    return userStatus.monthlyUsage < 300; // 300 per month
+  } else { // pro_plus
+    return userStatus.monthlyUsage < 1000; // 1000 per month
+  }
+  
+  return true; // Allow if no usage data or new day
+}
+
+// Show upgrade prompt for rate limited users
+function showUpgradePrompt() {
+  chrome.storage.local.get(['userStatus'], (result) => {
+    const userStatus = result.userStatus || {};
+    let limitText = 'your usage limit';
+    let upgradeText = 'Upgrade for more analyses!';
+    
+    if (userStatus.subscriptionType === 'free') {
+      limitText = 'your weekly limit of 7 free analyses';
+      upgradeText = 'Upgrade to Pro (300/month) or Pro+ (1000/month)!';
+    } else if (userStatus.subscriptionType === 'pro') {
+      limitText = 'your monthly limit of 300 analyses';
+      upgradeText = 'Upgrade to Pro+ for 1000 analyses per month!';
+    }
+    
+    const modal = document.createElement('div');
+    modal.className = 'upgrade-modal';
+    modal.innerHTML = `
+      <div class="upgrade-modal-content">
+        <h3>Usage Limit Reached</h3>
+        <p>You've reached ${limitText}.</p>
+        <p>${upgradeText}</p>
+        <div class="upgrade-buttons">
+          <button id="upgrade-btn" class="upgrade-btn">View Plans</button>
+          <button id="close-modal-btn" class="close-modal-btn">Maybe Later</button>
+        </div>
+      </div>
+    `;
+    
+    document.body.appendChild(modal);
+    
+    document.getElementById('upgrade-btn').addEventListener('click', () => {
+      // TODO: Open Stripe checkout or your payment page
+      chrome.tabs.create({ url: 'https://your-website.com/upgrade' });
+      modal.remove();
+    });
+    
+    document.getElementById('close-modal-btn').addEventListener('click', () => {
+      modal.remove();
+    });
+  });
+}
+
+// Track usage after successful API call
+async function trackUsage() {
+  if (!currentUser) return;
+  
+  try {
+    // TODO: Replace with your Firebase Cloud Function URL
+    await fetch('https://your-project.cloudfunctions.net/trackUsage', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        userId: currentUser.id,
+        timestamp: new Date().toISOString(),
+        action: 'analysis'
+      })
+    });
+    
+    // Refresh user status
+    checkUserStatus();
+  } catch (error) {
+    console.error('Failed to track usage:', error);
+  }
 }
 
 // Sign in with Google using Chrome's built-in identity API
@@ -615,8 +997,8 @@ function signInWithGoogle() {
     }
 
     try {
-      // Get detailed user profile information using People API
-      const response = await fetch('https://people.googleapis.com/v1/people/me?personFields=names,photos,emailAddresses', {
+      // Get user profile information using userinfo API (consistent with Firebase functions)
+      const response = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -628,17 +1010,12 @@ function signInWithGoogle() {
 
       const userProfile = await response.json();
       
-      // Extract user data from People API response
-      const name = userProfile.names && userProfile.names.length > 0 ? userProfile.names[0].displayName : 'Unknown User';
-      const email = userProfile.emailAddresses && userProfile.emailAddresses.length > 0 ? userProfile.emailAddresses[0].value : 'No email';
-      const picture = userProfile.photos && userProfile.photos.length > 0 ? userProfile.photos[0].url : '';
-      
-      // Store user data
+      // Store user data (using same format as Firebase functions)
       currentUser = {
-        id: userProfile.resourceName,
-        email: email,
-        name: name,
-        picture: picture
+        id: userProfile.id,
+        email: userProfile.email,
+        name: userProfile.name,
+        picture: userProfile.picture
       };
       
       chrome.storage.local.set({
