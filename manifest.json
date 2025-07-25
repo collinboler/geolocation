@@ -9,7 +9,9 @@
         "sidePanel",
         "tabs",
         "tabCapture",
-        "identity"
+        "desktopCapture",
+        "identity",
+        "notifications"
     ],
     "host_permissions": [
         "https://api.openai.com/*",
@@ -39,5 +41,4 @@
         "service_worker": "scripts/background.js"
     },
     "key":"MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA2noJh5qLVxpJhPsGdSt1CG1JXLjDnxBWSqbi8yi783Mdz5KF5yPrrnjAWTq5/PF3RsqfEoxcm9bJ6UOFpHHwfMySJCUf8zrrnX78KS9kV/+TmaKl9nGbaCzzRRodpXBrx64gJoEnqsSJCsLMI153PNfxCGCg+SdXbC4syAa4EnJ8fus7FfvFzjonC2Ug5nrKl/u5ngbAU3q17Uy8tLnJMqG/333hyhrM4rk2UFT9WMZJ8E5yyJh5C8L/y7IwVoKIeUXoIM32GajQolb56PAOeJIHyF6q7tYcw2/sj1PNGQcq/bAuF5koDWmpWDYIGLFTMJbqRtIJC0vIpaQDR2/KIwIDAQAB"
- 
-  }
+}

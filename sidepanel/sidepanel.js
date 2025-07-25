@@ -464,47 +464,117 @@ function toggleMapVisibility(showMap) {
   }
 }
 
-function captureScreen() {
-  // Get current tab info
-  chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-    const currentTab = tabs[0];
-    
-    // Capture the visible tab content
-    chrome.tabs.captureVisibleTab(currentTab.windowId, { format: 'png' }, (dataUrl) => {
-      if (chrome.runtime.lastError) {
-        showStatus('Error capturing screen: ' + chrome.runtime.lastError.message);
+async function tryCaptureMethods() {
+  try {
+    // Method 1: Try getting stream ID from background script
+    console.log('Requesting stream ID from background script...');
+    const response = await new Promise((resolve, reject) => {
+      chrome.runtime.sendMessage(
+        { type: 'CAPTURE_TAB' },
+        response => {
+          if (chrome.runtime.lastError) {
+            reject(new Error(chrome.runtime.lastError.message));
+          } else if (response && response.error) {
+            reject(new Error(response.error));
+          } else if (response && response.streamId) {
+            resolve(response);
+          } else {
+            reject(new Error('No stream ID received'));
+          }
+        }
+      );
+    });
+
+    if (response.streamId) {
+      console.log('Got stream ID, getting user media...');
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: false,
+        video: {
+          mandatory: {
+            chromeMediaSource: 'tab',
+            chromeMediaSourceId: response.streamId
+          }
+        }
+      });
+
+      if (stream) {
+        console.log('Got media stream, capturing frame...');
+        const frame = await captureVideoFrame(stream);
+        stream.getTracks().forEach(track => track.stop());
+        return frame;
+      }
+    }
+  } catch (error) {
+    console.log('Tab capture failed:', error);
+  }
+
+  // Method 2: Desktop capture (user must select a window/screen)
+  console.log('Trying desktop capture...');
+  return new Promise((resolve, reject) => {
+    chrome.desktopCapture.chooseDesktopMedia(['screen', 'window'], streamId => {
+      if (!streamId) {
+        reject(new Error('Desktop capture cancelled or failed'));
         return;
       }
-      
-      // Create canvas to crop out the side panel
-      const img = new Image();
-      img.onload = () => {
-        const canvas = document.createElement('canvas');
-        const ctx = canvas.getContext('2d');
-        
-        // Get the side panel width (approximately 400px)
-        const sidePanelWidth = 400;
-        const cropWidth = img.width - sidePanelWidth;
-        
-        // Set canvas dimensions to exclude side panel
-        canvas.width = cropWidth;
-        canvas.height = img.height;
-        
-        // Draw only the main content area (excluding side panel)
-        ctx.drawImage(img, 0, 0, cropWidth, img.height, 0, 0, cropWidth, img.height);
-        
-        // Convert cropped canvas to data URL
-        const croppedDataUrl = canvas.toDataURL('image/png');
-        processImage(croppedDataUrl); // No API key needed
-      };
-      
-      img.src = dataUrl;
+
+      navigator.mediaDevices.getUserMedia({
+        audio: false,
+        video: {
+          mandatory: {
+            chromeMediaSource: 'desktop',
+            chromeMediaSourceId: streamId
+          }
+        }
+      }).then(async stream => {
+        console.log('Desktop capture successful, getting video frame...');
+        const frame = await captureVideoFrame(stream);
+        stream.getTracks().forEach(track => track.stop());
+        resolve(frame);
+      }).catch(reject);
     });
   });
 }
 
-async function processImage(dataUrl) {
-  // Show loading spinner and hide camera icon/text
+function captureVideoFrame(stream) {
+  return new Promise((resolve, reject) => {
+    const video = document.createElement('video');
+    video.srcObject = stream;
+    video.onloadedmetadata = () => {
+      video.play();
+      video.onplaying = () => {
+        try {
+          const canvas = document.createElement('canvas');
+          canvas.width = video.videoWidth;
+          canvas.height = video.videoHeight;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(video, 0, 0);
+          
+          // Get the side panel width (approximately 400px)
+          const sidePanelWidth = 400;
+          const cropWidth = canvas.width - sidePanelWidth;
+          
+          // Create a new canvas for the cropped image
+          const croppedCanvas = document.createElement('canvas');
+          croppedCanvas.width = cropWidth;
+          croppedCanvas.height = canvas.height;
+          
+          // Draw only the main content area (excluding side panel)
+          const croppedCtx = croppedCanvas.getContext('2d');
+          croppedCtx.drawImage(canvas, sidePanelWidth, 0, cropWidth, canvas.height, 0, 0, cropWidth, canvas.height);
+          
+          resolve(croppedCanvas.toDataURL('image/png'));
+          video.remove();
+        } catch (error) {
+          reject(error);
+        }
+      };
+    };
+    video.onerror = reject;
+  });
+}
+
+function captureScreen() {
+  // Show loading state
   const cameraIcon = document.getElementById('camera-icon');
   const buttonText = document.getElementById('button-text');
   const loadingSpinner = document.getElementById('loading-spinner');
@@ -513,62 +583,17 @@ async function processImage(dataUrl) {
   buttonText.style.display = 'none';
   loadingSpinner.style.display = 'block';
 
-  try {
-    // Check if user is signed in
-    if (!currentUser) {
-      throw new Error('Please sign in to use the analysis feature');
-    }
-
-    // Call Firebase Cloud Function instead of OpenAI directly
-    const result = await callFirebaseFunction('analyzeImage', {
-      imageData: dataUrl
+  // Try multiple capture methods in sequence
+  tryCaptureMethods()
+    .then(processImage)
+    .catch(error => {
+      console.error('Capture failed:', error);
+      showStatus('Error: ' + error.message);
+      // Restore button state
+      cameraIcon.style.display = 'inline';
+      buttonText.style.display = 'inline';
+      loadingSpinner.style.display = 'none';
     });
-    
-    if (result.error) {
-      throw new Error(result.error);
-    }
-    
-    const responseText = result.response;
-    const tokensUsed = result.tokensUsed;
-    const analysisCost = result.cost;
-    
-    // Update cost display and save to storage
-    updateCostDisplay(tokensUsed, analysisCost);
-    
-    // Refresh user status after usage
-    checkUserStatus();
-    
-    const locationData = extractLocationFromResponse(responseText);
-    
-    if (locationData.coordinates) {
-      document.getElementById('coords').textContent = `${locationData.coordinates.lat}, ${locationData.coordinates.lng}`;
-      updateMapIframe(locationData.coordinates.lat, locationData.coordinates.lng, zoomLevel);
-      
-      // Save to storage
-      chrome.storage.local.set({
-        coords: locationData.coordinates,
-        locationWords: locationData.description
-      });
-    }
-    
-    if (locationData.description) {
-      document.getElementById('location-words').textContent = locationData.description;
-    }
-
-    // Restore original button state
-    cameraIcon.style.display = 'inline';
-    buttonText.style.display = 'inline';
-    loadingSpinner.style.display = 'none';
-
-  } catch (error) {
-    console.error('Error:', error);
-    showStatus('Error: ' + error.message);
-    
-    // Restore original button state
-    cameraIcon.style.display = 'inline';
-    buttonText.style.display = 'inline';
-    loadingSpinner.style.display = 'none';
-  }
 }
 
 // Helper function to call Firebase Cloud Functions via HTTP
@@ -724,6 +749,40 @@ function initAuth() {
   
   // Check if user is already signed in
   checkAuthState();
+  
+  // Listen for payment success messages
+  window.addEventListener('message', (event) => {
+    if (event.data && event.data.source === 'stripe-redirect') {
+      console.log('Received payment message:', event.data);
+      
+      if (event.data.type === 'STRIPE_SUCCESS') {
+        // Payment successful, refresh user status
+        showStatus('Payment successful! Refreshing your subscription...');
+        
+        // Force refresh multiple times to ensure we get the updated status
+        setTimeout(async () => {
+          if (currentUser && event.data.sessionId) {
+            console.log('=== REFRESHING USER STATUS AFTER PAYMENT ===');
+            console.log('Session ID:', event.data.sessionId);
+            
+            // Clear cached status first
+            chrome.storage.local.remove(['userStatus']);
+            
+            // Refresh user status to get updated data
+            await checkUserStatus();
+            const result = await new Promise(resolve => {
+              chrome.storage.local.get(['userStatus'], resolve);
+            });
+            
+            if (result.userStatus) {
+              updateUserStatusUI(result.userStatus);
+              showStatus(`Subscription activated! You now have ${result.userStatus.subscriptionType} access.`);
+            }
+          }
+        }, 2000);
+      }
+    }
+  });
 }
 
 // Check current authentication state
