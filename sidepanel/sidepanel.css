@@ -265,6 +265,25 @@ body {
     box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
 }
 
+/* Status message styling */
+.status-message {
+    text-align: center;
+    padding: 8px 16px;
+    margin: 8px 0 16px 0;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    min-height: 20px;
+    background: rgba(0, 166, 126, 0.1);
+    color: #00A67E;
+    border: 1px solid rgba(0, 166, 126, 0.2);
+    transition: opacity 0.3s ease;
+}
+
+.status-message:empty {
+    display: none;
+}
+
 #location-area {
     margin: 16px 0;
 }
