@@ -464,116 +464,9 @@ function toggleMapVisibility(showMap) {
   }
 }
 
-async function tryCaptureMethods() {
-  try {
-    // Method 1: Try getting stream ID from background script
-    console.log('Requesting stream ID from background script...');
-    const response = await new Promise((resolve, reject) => {
-      chrome.runtime.sendMessage(
-        { type: 'CAPTURE_TAB' },
-        response => {
-          if (chrome.runtime.lastError) {
-            reject(new Error(chrome.runtime.lastError.message));
-          } else if (response && response.error) {
-            reject(new Error(response.error));
-          } else if (response && response.streamId) {
-            resolve(response);
-          } else {
-            reject(new Error('No stream ID received'));
-          }
-        }
-      );
-    });
-
-    if (response.streamId) {
-      console.log('Got stream ID, getting user media...');
-      const stream = await navigator.mediaDevices.getUserMedia({
-        audio: false,
-        video: {
-          mandatory: {
-            chromeMediaSource: 'tab',
-            chromeMediaSourceId: response.streamId
-          }
-        }
-      });
-
-      if (stream) {
-        console.log('Got media stream, capturing frame...');
-        const frame = await captureVideoFrame(stream);
-        stream.getTracks().forEach(track => track.stop());
-        return frame;
-      }
-    }
-  } catch (error) {
-    console.log('Tab capture failed:', error);
-  }
-
-  // Method 2: Desktop capture (user must select a window/screen)
-  console.log('Trying desktop capture...');
-  return new Promise((resolve, reject) => {
-    chrome.desktopCapture.chooseDesktopMedia(['screen', 'window'], streamId => {
-      if (!streamId) {
-        reject(new Error('Desktop capture cancelled or failed'));
-        return;
-      }
-
-      navigator.mediaDevices.getUserMedia({
-        audio: false,
-        video: {
-          mandatory: {
-            chromeMediaSource: 'desktop',
-            chromeMediaSourceId: streamId
-          }
-        }
-      }).then(async stream => {
-        console.log('Desktop capture successful, getting video frame...');
-        const frame = await captureVideoFrame(stream);
-        stream.getTracks().forEach(track => track.stop());
-        resolve(frame);
-      }).catch(reject);
-    });
-  });
-}
-
-function captureVideoFrame(stream) {
-  return new Promise((resolve, reject) => {
-    const video = document.createElement('video');
-    video.srcObject = stream;
-    video.onloadedmetadata = () => {
-      video.play();
-      video.onplaying = () => {
-        try {
-          const canvas = document.createElement('canvas');
-          canvas.width = video.videoWidth;
-          canvas.height = video.videoHeight;
-          const ctx = canvas.getContext('2d');
-          ctx.drawImage(video, 0, 0);
-          
-          // Get the side panel width (approximately 400px)
-          const sidePanelWidth = 400;
-          const cropWidth = canvas.width - sidePanelWidth;
-          
-          // Create a new canvas for the cropped image
-          const croppedCanvas = document.createElement('canvas');
-          croppedCanvas.width = cropWidth;
-          croppedCanvas.height = canvas.height;
-          
-          // Draw only the main content area (excluding side panel)
-          const croppedCtx = croppedCanvas.getContext('2d');
-          croppedCtx.drawImage(canvas, sidePanelWidth, 0, cropWidth, canvas.height, 0, 0, cropWidth, canvas.height);
-          
-          resolve(croppedCanvas.toDataURL('image/png'));
-          video.remove();
-        } catch (error) {
-          reject(error);
-        }
-      };
-    };
-    video.onerror = reject;
-  });
-}
-
 function captureScreen() {
+  console.log('=== STARTING CAPTURE SCREEN ===');
+  
   // Show loading state
   const cameraIcon = document.getElementById('camera-icon');
   const buttonText = document.getElementById('button-text');
@@ -583,17 +476,88 @@ function captureScreen() {
   buttonText.style.display = 'none';
   loadingSpinner.style.display = 'block';
 
-  // Try multiple capture methods in sequence
-  tryCaptureMethods()
-    .then(processImage)
-    .catch(error => {
-      console.error('Capture failed:', error);
-      showStatus('Error: ' + error.message);
+  // Request capture from background script (which has proper permissions)
+  console.log('Requesting capture from background script...');
+  chrome.runtime.sendMessage({ type: 'CAPTURE_TAB' }, (response) => {
+    console.log('=== BACKGROUND CAPTURE RESPONSE ===', response);
+    
+    if (chrome.runtime.lastError) {
+      console.error('Message error:', chrome.runtime.lastError);
+      showStatus('Error: ' + chrome.runtime.lastError.message);
       // Restore button state
       cameraIcon.style.display = 'inline';
       buttonText.style.display = 'inline';
       loadingSpinner.style.display = 'none';
-    });
+      return;
+    }
+    
+    if (response && response.error) {
+      console.error('Background capture error:', response.error);
+      showStatus('Error: ' + response.error);
+      // Restore button state
+      cameraIcon.style.display = 'inline';
+      buttonText.style.display = 'inline';
+      loadingSpinner.style.display = 'none';
+      return;
+    }
+    
+    if (!response || !response.dataUrl) {
+      console.error('No capture data received from background');
+      showStatus('Error: No capture data received');
+      // Restore button state
+      cameraIcon.style.display = 'inline';
+      buttonText.style.display = 'inline';
+      loadingSpinner.style.display = 'none';
+      return;
+    }
+    
+    console.log('Background capture successful, data length:', response.dataUrl.length);
+    
+    // Create canvas to crop out the side panel
+    const img = new Image();
+    img.onload = () => {
+      console.log('=== CROPPING IMAGE ===');
+      console.log('Original image dimensions:', img.width, 'x', img.height);
+      
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      
+      // Get the side panel width (approximately 400px)
+      const sidePanelWidth = 400;
+      const cropWidth = img.width - sidePanelWidth;
+      
+      if (cropWidth <= 0) {
+        console.warn('Screen too narrow, using full image');
+        processImage(response.dataUrl);
+        return;
+      }
+      
+      // Set canvas dimensions to exclude side panel
+      canvas.width = cropWidth;
+      canvas.height = img.height;
+      
+      // Draw only the main content area (excluding side panel on the right)
+      ctx.drawImage(img, 0, 0, cropWidth, img.height, 0, 0, cropWidth, img.height);
+      
+      // Convert cropped canvas to data URL
+      const croppedDataUrl = canvas.toDataURL('image/png');
+      console.log('Cropped image created, dimensions:', cropWidth, 'x', img.height);
+      console.log('Cropped data length:', croppedDataUrl.length);
+      
+      processImage(croppedDataUrl);
+    };
+    
+    img.onerror = (error) => {
+      console.error('Image load error:', error);
+      showStatus('Error loading captured image');
+      // Restore button state
+      cameraIcon.style.display = 'inline';
+      buttonText.style.display = 'inline';
+      loadingSpinner.style.display = 'none';
+    };
+    
+    img.src = response.dataUrl;
+  });
 }
 
 // Helper function to call Firebase Cloud Functions via HTTP
