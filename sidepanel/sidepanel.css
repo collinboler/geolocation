@@ -799,4 +799,367 @@ input:checked + .slider:before {
         background-color: rgba(255, 255, 255, 0.1);
         color: #fff;
     }
+}
+
+/* Payment button styles */
+.payment-button {
+    background: linear-gradient(135deg, #ff6b35, #ff8c00);
+    color: white;
+    border: none;
+    padding: 12px 20px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    justify-content: center;
+    box-shadow: 0 4px 12px rgba(255, 107, 53, 0.3);
+    width: 100%;
+    margin-top: 12px;
+}
+
+.payment-button:hover {
+    background: linear-gradient(135deg, #ff8c00, #ff6b35);
+    box-shadow: 0 6px 15px rgba(255, 140, 0, 0.4);
+    transform: translateY(-1px);
+}
+
+.payment-button.premium-active {
+    background: linear-gradient(135deg, #28a745, #34ce57);
+    color: white;
+    cursor: default;
+}
+
+.payment-button.premium-active:hover {
+    background: linear-gradient(135deg, #28a745, #34ce57);
+    box-shadow: 0 4px 12px rgba(40, 167, 69, 0.3);
+    transform: none;
+}
+
+.payment-button:disabled {
+    opacity: 0.8;
+    cursor: not-allowed;
+}
+
+body.dark-mode .payment-button {
+    box-shadow: 0 4px 12px rgba(255, 107, 53, 0.2);
+}
+
+body.dark-mode .payment-button:hover {
+    box-shadow: 0 6px 15px rgba(255, 140, 0, 0.3);
+}
+
+body.dark-mode .payment-button.premium-active:hover {
+    box-shadow: 0 4px 12px rgba(40, 167, 69, 0.2);
+}
+
+.premium-features-list {
+    margin: 12px 0;
+    padding: 12px;
+    background: rgba(255, 107, 53, 0.1);
+    border-radius: 6px;
+    border-left: 3px solid #ff6b35;
+}
+
+.premium-features-list p {
+    margin: 8px 0;
+    font-size: 14px;
+    color: #555;
+    font-weight: 500;
+    line-height: 1.4;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+body.dark-mode .premium-features-list {
+    background: rgba(255, 107, 53, 0.15);
+    border-left-color: #ff8c00;
+}
+
+body.dark-mode .premium-features-list p {
+    color: #e5e5e5;
+}
+
+body.dark-mode .premium-features-list p strong {
+    color: #fff;
+}
+
+/* Trial button styles */
+.trial-button {
+    background: linear-gradient(135deg, #ffd700, #ffed4e);
+    color: #333;
+    border: none;
+    padding: 12px 20px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    justify-content: center;
+    box-shadow: 0 4px 12px rgba(255, 215, 0, 0.3);
+    width: 100%;
+    margin-top: 8px;
+}
+
+.trial-button:hover {
+    background: linear-gradient(135deg, #ffed4e, #ffd700);
+    box-shadow: 0 6px 15px rgba(255, 215, 0, 0.4);
+    transform: translateY(-1px);
+}
+
+/* Manage plan button styles */
+.manage-plan-button {
+    background: linear-gradient(135deg, #6c5ce7, #74b9ff);
+    color: white;
+    border: none;
+    padding: 10px 18px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    justify-content: center;
+    box-shadow: 0 3px 10px rgba(108, 92, 231, 0.3);
+    width: 100%;
+    margin-top: 8px;
+}
+
+.manage-plan-button:hover {
+    background: linear-gradient(135deg, #74b9ff, #6c5ce7);
+    box-shadow: 0 4px 12px rgba(108, 92, 231, 0.4);
+    transform: translateY(-1px);
+}
+
+/* Trial active button styles */
+.payment-button.trial-active {
+    background: linear-gradient(135deg, #ff7675, #fd79a8);
+    color: white;
+    animation: pulse 2s infinite;
+}
+
+.payment-button.trial-active:hover {
+    background: linear-gradient(135deg, #fd79a8, #ff7675);
+    box-shadow: 0 6px 15px rgba(255, 118, 117, 0.4);
+}
+
+@keyframes pulse {
+    0% {
+        box-shadow: 0 4px 12px rgba(255, 118, 117, 0.3);
+    }
+    50% {
+        box-shadow: 0 6px 20px rgba(255, 118, 117, 0.5);
+    }
+    100% {
+        box-shadow: 0 4px 12px rgba(255, 118, 117, 0.3);
+    }
+}
+
+/* Dark mode styles for new buttons */
+body.dark-mode .trial-button {
+    box-shadow: 0 4px 12px rgba(255, 215, 0, 0.2);
+}
+
+body.dark-mode .trial-button:hover {
+    box-shadow: 0 6px 15px rgba(255, 215, 0, 0.3);
+}
+
+body.dark-mode .manage-plan-button {
+    box-shadow: 0 3px 10px rgba(108, 92, 231, 0.2);
+}
+
+body.dark-mode .manage-plan-button:hover {
+    box-shadow: 0 4px 12px rgba(108, 92, 231, 0.3);
+}
+
+body.dark-mode .payment-button.trial-active {
+    box-shadow: 0 4px 12px rgba(255, 118, 117, 0.2);
+}
+
+/* Trial activation notification */
+.trial-notification {
+    background: linear-gradient(135deg, #ffd700, #ffed4e);
+    border-radius: 12px;
+    margin: 16px 0;
+    box-shadow: 0 6px 20px rgba(255, 215, 0, 0.3);
+    animation: slideInDown 0.5s ease-out;
+}
+
+.trial-notification-content {
+    display: flex;
+    align-items: center;
+    padding: 16px;
+    gap: 12px;
+    position: relative;
+}
+
+.trial-notification svg {
+    color: #333;
+    flex-shrink: 0;
+}
+
+.trial-notification-text {
+    flex: 1;
+    color: #333;
+}
+
+.trial-notification-text strong {
+    display: block;
+    font-size: 16px;
+    margin-bottom: 4px;
+}
+
+.trial-notification-text p {
+    margin: 0;
+    font-size: 13px;
+    opacity: 0.8;
+}
+
+.trial-notification-close {
+    background: none;
+    border: none;
+    font-size: 18px;
+    color: #333;
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 4px;
+    transition: background-color 0.2s;
+}
+
+.trial-notification-close:hover {
+    background-color: rgba(0, 0, 0, 0.1);
+}
+
+@keyframes slideInDown {
+    from {
+        transform: translateY(-100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+/* Dark mode trial notification */
+body.dark-mode .trial-notification {
+    background: linear-gradient(135deg, #ffd700, #ffed4e);
+    box-shadow: 0 6px 20px rgba(255, 215, 0, 0.2);
+}
+
+body.dark-mode .trial-notification-content {
+    color: #333;
+}
+
+/* Edge case notification styles */
+.edge-case-notification {
+    border-radius: 8px;
+    margin: 12px 0;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    animation: slideInDown 0.3s ease-out;
+}
+
+.edge-case-notification.warning {
+    background: linear-gradient(135deg, #ff9500, #ffb347);
+    color: #333;
+}
+
+.edge-case-notification.error {
+    background: linear-gradient(135deg, #ff4757, #ff6b7a);
+    color: white;
+}
+
+.edge-case-notification.info {
+    background: linear-gradient(135deg, #3742fa, #5352ed);
+    color: white;
+}
+
+.notification-content {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    gap: 12px;
+}
+
+.notification-text {
+    flex: 1;
+}
+
+.notification-text strong {
+    display: block;
+    font-size: 14px;
+    margin-bottom: 4px;
+}
+
+.notification-text p {
+    margin: 0;
+    font-size: 13px;
+    opacity: 0.9;
+}
+
+.notification-actions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.notification-action {
+    background: rgba(255, 255, 255, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    color: inherit;
+    padding: 6px 12px;
+    border-radius: 4px;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.notification-action:hover {
+    background: rgba(255, 255, 255, 0.3);
+    transform: translateY(-1px);
+}
+
+.notification-close {
+    background: none;
+    border: none;
+    color: inherit;
+    font-size: 16px;
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 4px;
+    transition: background-color 0.2s;
+}
+
+.notification-close:hover {
+    background: rgba(0, 0, 0, 0.1);
+}
+
+/* Dark mode edge case notifications */
+body.dark-mode .edge-case-notification {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+body.dark-mode .edge-case-notification.warning {
+    background: linear-gradient(135deg, #ff9500, #ffb347);
+    color: #333;
+}
+
+body.dark-mode .edge-case-notification.error {
+    background: linear-gradient(135deg, #ff4757, #ff6b7a);
+    color: white;
+}
+
+body.dark-mode .edge-case-notification.info {
+    background: linear-gradient(135deg, #3742fa, #5352ed);
+    color: white;
 } 

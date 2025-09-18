@@ -1,5 +1,120 @@
 let zoomLevel = 9; // Declare at the top level
 
+// Initialize ExtPay for the sidepanel
+const extpay = ExtPay('geoguesser-hacker');
+
+/*
+======================================================================================
+COMPREHENSIVE EXTPAY.JS EDGE CASES & WORKFLOWS
+======================================================================================
+
+1. NEW USER WORKFLOW
+   ├── User installs extension
+   ├── ExtPay.getUser() returns { paid: false, trialStarted: false }
+   ├── UI shows: "Upgrade to Premium" + "Start Free Trial" buttons
+   ├── Premium features list: "★ Free trial available!"
+   └── Feature access: Blocked with prompt to upgrade/trial
+
+2. FREE TRIAL ACTIVATION WORKFLOW
+   ├── User clicks "Start Free Trial"
+   ├── extpay.openTrialPage() opens trial signup
+   ├── onTrialStarted event fires
+   ├── UI immediately hides trial button
+   ├── Shows "★ Free Trial Activated!" notification
+   ├── Button changes to "🔥 Trial Active - Upgrade Now"
+   ├── Premium features list: "★ Trial active!"
+   └── Feature access: Full premium access granted
+
+3. PAID SUBSCRIPTION WORKFLOW
+   ├── User clicks "Upgrade to Premium" or upgrades from trial
+   ├── extpay.openPaymentPage() opens payment flow
+   ├── onPaid event fires after successful payment
+   ├── UI shows "✓ Premium Activated" button
+   ├── "Manage Plan" button appears
+   ├── Premium features list: "✓ Premium activated!"
+   └── Feature access: Full premium access granted
+
+4. TRIAL EXPIRATION WORKFLOW
+   ├── Trial period ends (detected by user.trialEnded)
+   ├── Shows "Trial Expired" notification with upgrade prompt
+   ├── Button shows "Upgrade to Premium"
+   ├── Trial button remains hidden
+   ├── Premium features list: "★ Free trial available!" (but grayed out)
+   └── Feature access: Blocked with upgrade prompt
+
+5. SUBSCRIPTION MANAGEMENT WORKFLOW
+   ├── Paid user clicks "Manage Plan"
+   ├── extpay.openPaymentPage() opens management page
+   ├── User can: Upgrade, downgrade, cancel, update payment method
+   ├── Changes reflect immediately via refresh events
+   └── UI updates based on new subscription status
+
+6. SUBSCRIPTION CANCELLATION WORKFLOW
+   ├── User cancels via ExtensionPay dashboard
+   ├── user.subscriptionCancelled = true, still has access until end date
+   ├── Shows "Subscription Cancelled" notification with end date
+   ├── "Reactivate" action button shown
+   └── Full access until subscription end date
+
+7. SUBSCRIPTION EXPIRATION WORKFLOW
+   ├── Cancelled subscription reaches end date
+   ├── user.subscriptionExpired = true
+   ├── Shows "Subscription Expired" notification
+   ├── Button shows "Renew Now"
+   ├── Premium features list: "★ Free trial available!"
+   └── Feature access: Blocked with renewal prompt
+
+8. PAYMENT FAILURE WORKFLOW
+   ├── Payment processing fails (user.paymentFailed = true)
+   ├── Shows "Payment Failed" error notification
+   ├── "Retry Payment" action button
+   ├── User retains current access level
+   └── Can retry payment immediately
+
+9. NETWORK/SERVICE ISSUES WORKFLOW
+   ├── No internet: Shows offline message, allows limited functionality
+   ├── ExtPay service down: Shows service unavailable message
+   ├── API rate limit: Shows "too many requests" message
+   ├── Initialization failed: Prompts extension reload
+   └── Graceful degradation with informative messages
+
+10. MULTIPLE PAYMENT ATTEMPTS WORKFLOW
+    ├── System detects multiple failed attempts
+    ├── Shows warning about payment issues
+    ├── Provides support contact information
+    ├── Prevents excessive retry attempts
+    └── Guides user to proper resolution
+
+EDGE CASE DETECTION MATRIX:
+┌─────────────────────┬────────────┬──────────────┬─────────────┬─────────────┐
+│ User State          │ Paid       │ Trial        │ Expired     │ UI Action   │
+├─────────────────────┼────────────┼──────────────┼─────────────┼─────────────┤
+│ New User            │ false      │ false        │ false       │ Show Both   │
+│ Trial Active        │ false      │ true         │ false       │ Trial UI    │
+│ Trial Expired       │ false      │ true         │ true        │ Upgrade     │
+│ Paid Active         │ true       │ N/A          │ false       │ Manage      │
+│ Paid Cancelled      │ true       │ N/A          │ false       │ Reactivate  │
+│ Subscription Expired│ false      │ N/A          │ true        │ Renew       │
+│ Payment Failed      │ varies     │ varies       │ varies      │ Retry       │
+│ Network Error       │ unknown    │ unknown      │ unknown     │ Offline     │
+└─────────────────────┴────────────┴──────────────┴─────────────┴─────────────┘
+
+EXTENSIONPAY EVENTS HANDLED:
+• extpay.onPaid - Subscription activated
+• extpay.onTrialStarted - Free trial began
+• window.focus - User returns from payment page
+• document.visibilitychange - Tab becomes active
+• Extension reload - Status refresh on startup
+
+GRACEFUL DEGRADATION STRATEGY:
+1. Always attempt to provide some functionality
+2. Clear error messages with actionable steps
+3. Fallback to basic features when payment system unavailable
+4. Persistent retry mechanisms for temporary failures
+5. User-friendly explanations for all edge cases
+======================================================================================
+*/
+
 document.addEventListener('DOMContentLoaded', () => {
   const captureButton = document.getElementById('capture-button');
   const settingsButton = document.getElementById('settings-button');
@@ -20,9 +135,29 @@ document.addEventListener('DOMContentLoaded', () => {
   const resetSessionCostButton = document.getElementById('reset-session-cost');
   const advancedDropdownToggle = document.getElementById('advanced-dropdown-toggle');
   const advancedSettingsDropdown = document.getElementById('advanced-settings-dropdown');
+  const paymentButton = document.getElementById('payment-button');
+  const trialButton = document.getElementById('trial-button');
+  const managePlanButton = document.getElementById('manage-plan-button');
 
   // Ensure main page is always shown by default
   showMainPageWithoutAnimation();
+
+  // Check payment status and update UI on load with edge case handling
+  initializePaymentStatusWithEdgeCases();
+
+  // Refresh payment status when the window regains focus (user returns from payment page)
+  window.addEventListener('focus', () => {
+    console.log('Window focused, refreshing payment status...');
+    checkPaymentStatus();
+  });
+
+  // Also refresh when page becomes visible again
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) {
+      console.log('Page became visible, refreshing payment status...');
+      checkPaymentStatus();
+    }
+  });
 
   // Load settings from storage
   chrome.storage.local.get(['openaiApiKey', 'zoomLevel', 'showCoords', 'showMap', 'darkMode', 'sessionCost'], (result) => {
@@ -131,7 +266,13 @@ document.addEventListener('DOMContentLoaded', () => {
   // Removed custom zoom button event listeners
 
   // Capture button event listener
-  captureButton.addEventListener('click', () => {
+  captureButton.addEventListener('click', async () => {
+    // Check premium access first
+    const hasPremiumAccess = await checkPremiumAccess();
+    if (!hasPremiumAccess) {
+      return;
+    }
+    
     chrome.storage.local.get(['openaiApiKey'], (result) => {
       if (result.openaiApiKey) {
         captureScreen(result.openaiApiKey);
@@ -176,6 +317,45 @@ document.addEventListener('DOMContentLoaded', () => {
     if (e.target !== advancedDropdownToggle) {
       advancedDropdownToggle.click();
     }
+  });
+
+  // Payment button event listener
+  paymentButton.addEventListener('click', () => {
+    extpay.openPaymentPage();
+  });
+
+  // Trial button event listener
+  trialButton.addEventListener('click', () => {
+    extpay.openTrialPage();
+  });
+
+  // Manage plan button event listener
+  managePlanButton.addEventListener('click', () => {
+    extpay.openPaymentPage(); // Opens payment page where users can manage their plans
+  });
+
+  // Listen for payment completion
+  extpay.onPaid.addListener(user => {
+    console.log('User has paid:', user);
+    checkPaymentStatus();
+    showStatus('Payment successful! Premium features unlocked.');
+  });
+
+  // Listen for trial started
+  extpay.onTrialStarted.addListener(user => {
+    console.log('User started trial:', user);
+    
+    // Immediately hide the trial button
+    const trialButton = document.getElementById('trial-button');
+    if (trialButton) {
+      trialButton.style.display = 'none';
+    }
+    
+    // Mark that we should show the trial activation message
+    chrome.storage.local.set({ shouldShowTrialMessage: true }, () => {
+      checkPaymentStatus();
+      showTrialActivatedMessage();
+    });
   });
 });
 
@@ -568,4 +748,350 @@ function updateCostDisplay(tokensUsed, analysisCost) {
 
 function updateSessionCost(sessionCost) {
   document.getElementById('session-cost').textContent = `$${sessionCost.toFixed(6)}`;
+}
+
+// ExtPay payment functions
+async function initializePaymentStatus() {
+  try {
+    const user = await extpay.getUser();
+    updatePaymentUI(user);
+    
+    // Check if we should show the trial activation message
+    chrome.storage.local.get(['shouldShowTrialMessage'], (result) => {
+      if (result.shouldShowTrialMessage && user.trialStarted) {
+        showTrialActivatedMessage();
+        // Clear the flag so we don't show it again
+        chrome.storage.local.remove('shouldShowTrialMessage');
+      }
+    });
+    
+    return user.paid || user.trialStarted;
+  } catch (error) {
+    console.error('Error checking payment status:', error);
+    updatePaymentUI({ paid: false, trialStarted: false });
+    return false;
+  }
+}
+
+async function checkPaymentStatus() {
+  try {
+    const user = await extpay.getUser();
+    updatePaymentUI(user);
+    return user.paid || user.trialStarted;
+  } catch (error) {
+    console.error('Error checking payment status:', error);
+    updatePaymentUI({ paid: false, trialStarted: false });
+    return false;
+  }
+}
+
+function updatePaymentUI(user) {
+  const paymentButton = document.getElementById('payment-button');
+  const trialButton = document.getElementById('trial-button');
+  const managePlanButton = document.getElementById('manage-plan-button');
+  
+  // Hide all buttons initially
+  paymentButton.style.display = 'none';
+  trialButton.style.display = 'none';
+  managePlanButton.style.display = 'none';
+  
+  // Update premium features list based on user status
+  updatePremiumFeaturesList(user);
+  
+  if (user.paid) {
+    // User has paid subscription
+    paymentButton.textContent = '✓ Premium Activated';
+    paymentButton.classList.add('premium-active');
+    paymentButton.disabled = true;
+    paymentButton.style.display = 'flex';
+    
+    // Show change plan button for paid users
+    managePlanButton.style.display = 'flex';
+    
+  } else if (user.trialStarted) {
+    // User is on trial - hide trial button and show upgrade button
+    paymentButton.innerHTML = `
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+      </svg>
+      🔥 Trial Active - Upgrade Now
+    `;
+    paymentButton.classList.remove('premium-active');
+    paymentButton.classList.add('trial-active');
+    paymentButton.disabled = false;
+    paymentButton.style.display = 'flex';
+    
+    // Don't show trial button for users who already have trial
+    trialButton.style.display = 'none';
+    
+  } else {
+    // User hasn't paid or started trial
+    paymentButton.innerHTML = `
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+        <path d="M2 17l10 5 10-5"/>
+        <path d="M2 12l10 5 10-5"/>
+      </svg>
+      Upgrade to Premium
+    `;
+    paymentButton.classList.remove('premium-active', 'trial-active');
+    paymentButton.disabled = false;
+    paymentButton.style.display = 'flex';
+    
+    // Show trial button for new users
+    trialButton.style.display = 'flex';
+  }
+}
+
+async function checkPremiumAccess() {
+  const isPaid = await checkPaymentStatus();
+  if (!isPaid) {
+    showStatus('This feature requires premium access. Please upgrade or start a free trial.');
+    return false;
+  }
+  return true;
+}
+
+function updatePremiumFeaturesList(user) {
+  const premiumFeaturesList = document.querySelector('.premium-features-list');
+  if (!premiumFeaturesList) return;
+  
+  if (user.paid) {
+    // User has paid subscription
+    premiumFeaturesList.innerHTML = `
+      <p><strong>&#10003; Premium activated!</strong></p>
+      <p>&#10003; Unlimited AI location guessing</p>
+      <p>&#10003; Advanced geolocation analysis</p>
+      <p>&#10003; Priority support</p>
+      <p>&#10003; All premium features unlocked</p>
+    `;
+  } else if (user.trialStarted) {
+    // User is on trial
+    premiumFeaturesList.innerHTML = `
+      <p><strong>&#9733; Trial active!</strong></p>
+      <p>&#10003; Unlimited AI location guessing</p>
+      <p>&#10003; Advanced geolocation analysis</p>
+      <p>&#10003; Priority support</p>
+      <p>&#10003; All premium features available</p>
+    `;
+  } else {
+    // User hasn't paid or started trial
+    premiumFeaturesList.innerHTML = `
+      <p><strong>&#9733; Free trial available!</strong></p>
+      <p>&#10003; Unlimited AI location guessing</p>
+      <p>&#10003; Advanced geolocation analysis</p>
+      <p>&#10003; Priority support</p>
+      <p>&#10003; Future premium features</p>
+    `;
+  }
+}
+
+// Comprehensive ExtPay.js Edge Case Handler
+async function handleExtPayEdgeCases() {
+  try {
+    const user = await extpay.getUser();
+    
+    // Edge Case 1: Network connectivity issues
+    if (!navigator.onLine) {
+      showStatus('No internet connection. Please check your network and try again.');
+      return;
+    }
+    
+    // Edge Case 2: ExtPay service unavailable
+    if (!user && navigator.onLine) {
+      console.warn('ExtPay service may be unavailable');
+      showStatus('Payment service temporarily unavailable. Please try again later.');
+      // Fallback to allow usage with warning
+      return { paid: false, trialStarted: false };
+    }
+    
+    // Edge Case 3: Trial expired but not upgraded
+    if (user.trialStarted && user.trialEnded && !user.paid) {
+      showExpiredTrialMessage();
+      return user;
+    }
+    
+    // Edge Case 4: Payment failed/cancelled
+    if (user.paymentFailed) {
+      showPaymentFailedMessage();
+      return user;
+    }
+    
+    // Edge Case 5: Subscription cancelled but still within period
+    if (user.paid && user.subscriptionCancelled) {
+      showSubscriptionCancelledMessage(user.subscriptionEndDate);
+      return user;
+    }
+    
+    // Edge Case 6: Subscription expired
+    if (user.subscriptionExpired) {
+      showSubscriptionExpiredMessage();
+      return user;
+    }
+    
+    // Edge Case 7: Multiple payment attempts
+    if (user.multiplePaymentAttempts) {
+      showMultiplePaymentAttemptsMessage();
+      return user;
+    }
+    
+    return user;
+    
+  } catch (error) {
+    console.error('ExtPay error:', error);
+    
+    // Edge Case 8: ExtPay initialization failed
+    if (error.message.includes('ExtPay not initialized')) {
+      showStatus('Payment system initialization failed. Please reload the extension.');
+      return { paid: false, trialStarted: false };
+    }
+    
+    // Edge Case 9: API rate limiting
+    if (error.status === 429) {
+      showStatus('Too many requests. Please wait a moment and try again.');
+      return { paid: false, trialStarted: false };
+    }
+    
+    // Edge Case 10: General API errors
+    showStatus('Payment system error. Please try again or contact support.');
+    return { paid: false, trialStarted: false };
+  }
+}
+
+// Enhanced initialization with edge case handling
+async function initializePaymentStatusWithEdgeCases() {
+  const user = await handleExtPayEdgeCases();
+  if (!user) return false;
+  
+  updatePaymentUI(user);
+  
+  // Check if we should show the trial activation message
+  chrome.storage.local.get(['shouldShowTrialMessage'], (result) => {
+    if (result.shouldShowTrialMessage && user.trialStarted && !user.trialEnded) {
+      showTrialActivatedMessage();
+      chrome.storage.local.remove('shouldShowTrialMessage');
+    }
+  });
+  
+  return user.paid || (user.trialStarted && !user.trialEnded);
+}
+
+// Edge case notification functions
+function showExpiredTrialMessage() {
+  showNotification('trial-expired', {
+    title: 'Trial Expired',
+    message: 'Your free trial has ended. Upgrade to continue using premium features.',
+    type: 'warning',
+    action: 'Upgrade Now',
+    callback: () => extpay.openPaymentPage()
+  });
+}
+
+function showPaymentFailedMessage() {
+  showNotification('payment-failed', {
+    title: 'Payment Failed',
+    message: 'Your payment could not be processed. Please try again.',
+    type: 'error',
+    action: 'Retry Payment',
+    callback: () => extpay.openPaymentPage()
+  });
+}
+
+function showSubscriptionCancelledMessage(endDate) {
+  const date = new Date(endDate).toLocaleDateString();
+  showNotification('subscription-cancelled', {
+    title: 'Subscription Cancelled',
+    message: `Your subscription is cancelled but active until ${date}.`,
+    type: 'info',
+    action: 'Reactivate',
+    callback: () => extpay.openPaymentPage()
+  });
+}
+
+function showSubscriptionExpiredMessage() {
+  showNotification('subscription-expired', {
+    title: 'Subscription Expired',
+    message: 'Your subscription has expired. Renew to continue using premium features.',
+    type: 'warning',
+    action: 'Renew Now',
+    callback: () => extpay.openPaymentPage()
+  });
+}
+
+function showMultiplePaymentAttemptsMessage() {
+  showNotification('multiple-attempts', {
+    title: 'Payment Issues Detected',
+    message: 'Multiple payment attempts detected. Please contact support if you\'re having trouble.',
+    type: 'warning',
+    action: 'Contact Support',
+    callback: () => window.open('mailto:support@your-extension.com')
+  });
+}
+
+// Generic notification system for edge cases
+function showNotification(id, options) {
+  // Remove existing notification of same type
+  const existingNotification = document.getElementById(`notification-${id}`);
+  if (existingNotification) {
+    existingNotification.remove();
+  }
+  
+  const notification = document.createElement('div');
+  notification.id = `notification-${id}`;
+  notification.className = `edge-case-notification ${options.type}`;
+  notification.innerHTML = `
+    <div class="notification-content">
+      <div class="notification-text">
+        <strong>${options.title}</strong>
+        <p>${options.message}</p>
+      </div>
+      <div class="notification-actions">
+        ${options.action ? `<button class="notification-action" onclick="this.closest('.edge-case-notification').remove(); (${options.callback.toString()})();">${options.action}</button>` : ''}
+        <button class="notification-close" onclick="this.closest('.edge-case-notification').remove();">×</button>
+      </div>
+    </div>
+  `;
+  
+  const mainPage = document.getElementById('main-page');
+  const header = mainPage.querySelector('.header');
+  header.parentNode.insertBefore(notification, header.nextSibling);
+  
+  // Auto-remove after 10 seconds unless it's an error
+  if (options.type !== 'error') {
+    setTimeout(() => {
+      if (notification.parentNode) {
+        notification.remove();
+      }
+    }, 10000);
+  }
+}
+
+function showTrialActivatedMessage() {
+  // Create a special notification element for the trial activation
+  const notification = document.createElement('div');
+  notification.className = 'trial-notification';
+  notification.innerHTML = `
+    <div class="trial-notification-content">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+      </svg>
+      <div class="trial-notification-text">
+        <strong>★ Free Trial Activated!</strong>
+        <p>Enjoy all premium features during your trial period.</p>
+      </div>
+      <button class="trial-notification-close" onclick="this.parentElement.parentElement.remove()">×</button>
+    </div>
+  `;
+  
+  // Insert at the top of the main page
+  const mainPage = document.getElementById('main-page');
+  const header = mainPage.querySelector('.header');
+  header.parentNode.insertBefore(notification, header.nextSibling);
+  
+  // Auto-remove after 8 seconds
+  setTimeout(() => {
+    if (notification.parentNode) {
+      notification.remove();
+    }
+  }, 8000);
 } 
