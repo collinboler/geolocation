@@ -15,7 +15,7 @@
         "<all_urls>"
     ],
     "content_security_policy": {
-        "extension_pages": "script-src 'self'; connect-src 'self' https://api.openai.com https://extensionpay.com; object-src 'self'"
+        "extension_pages": "script-src 'self'; connect-src 'self' https://api.openai.com https://extensionpay.com https://us-central1-geoguesser-hacker-ext.cloudfunctions.net; object-src 'self'"
     },
    
     "action" : {

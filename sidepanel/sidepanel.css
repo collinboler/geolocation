@@ -1162,4 +1162,57 @@ body.dark-mode .edge-case-notification.error {
 body.dark-mode .edge-case-notification.info {
     background: linear-gradient(135deg, #3742fa, #5352ed);
     color: white;
+}
+
+/* Usage statistics section */
+.usage-info {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 16px;
+    background: rgba(108, 92, 231, 0.1);
+    border-radius: 8px;
+    border-left: 3px solid #6c5ce7;
+}
+
+.usage-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 0;
+    border-bottom: 1px solid rgba(108, 92, 231, 0.2);
+}
+
+.usage-item:last-child {
+    border-bottom: none;
+}
+
+.usage-label {
+    font-size: 14px;
+    color: #666;
+    font-weight: 500;
+}
+
+.usage-value {
+    font-size: 14px;
+    font-weight: 600;
+    color: #333;
+}
+
+/* Dark mode usage section */
+body.dark-mode .usage-info {
+    background: rgba(108, 92, 231, 0.15);
+    border-left-color: #74b9ff;
+}
+
+body.dark-mode .usage-item {
+    border-bottom-color: rgba(108, 92, 231, 0.3);
+}
+
+body.dark-mode .usage-label {
+    color: #d1d5db;
+}
+
+body.dark-mode .usage-value {
+    color: #e5e5e5;
 } 

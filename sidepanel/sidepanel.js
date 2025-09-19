@@ -144,11 +144,22 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Check payment status and update UI on load with edge case handling
   initializePaymentStatusWithEdgeCases();
+  
+  // Initialize user in Firebase - only on settings page or when needed
+  if (document.getElementById('settings-page')) {
+    initializeFirebaseUser();
+  }
 
   // Refresh payment status when the window regains focus (user returns from payment page)
-  window.addEventListener('focus', () => {
+  window.addEventListener('focus', async () => {
     console.log('Window focused, refreshing payment status...');
-    checkPaymentStatus();
+    try {
+      const user = await extpay.getUser();
+      await syncSubscriptionToFirebase(user);
+      await checkPaymentStatus();
+    } catch (error) {
+      console.error('Error refreshing on focus:', error);
+    }
   });
 
   // Also refresh when page becomes visible again
@@ -273,18 +284,15 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
     
-    chrome.storage.local.get(['openaiApiKey'], (result) => {
-      if (result.openaiApiKey) {
-        captureScreen(result.openaiApiKey);
-      } else {
-        showStatus('Please enter your OpenAI API Key.');
-      }
-    });
+    // No longer need API key - using Firebase Functions
+    captureScreen();
   });
 
   // Page navigation event listeners
   settingsButton.addEventListener('click', () => {
     showSettingsPage();
+    // Initialize Firebase user when going to settings
+    setTimeout(() => initializeFirebaseUser(), 300);
   });
 
   backButton.addEventListener('click', () => {
@@ -337,7 +345,8 @@ document.addEventListener('DOMContentLoaded', () => {
   // Listen for payment completion
   extpay.onPaid.addListener(user => {
     console.log('User has paid:', user);
-    checkPaymentStatus();
+    syncSubscriptionToFirebase(user);
+    setTimeout(() => checkPaymentStatus(), 1000);
     showStatus('Payment successful! Premium features unlocked.');
   });
 
@@ -350,6 +359,9 @@ document.addEventListener('DOMContentLoaded', () => {
     if (trialButton) {
       trialButton.style.display = 'none';
     }
+    
+    // Sync trial status to Firebase
+    syncSubscriptionToFirebase(user);
     
     // Mark that we should show the trial activation message
     chrome.storage.local.set({ shouldShowTrialMessage: true }, () => {
@@ -545,7 +557,9 @@ function toggleMapVisibility(showMap) {
   }
 }
 
-function captureScreen(apiKey) {
+function captureScreen() {
+  showStatus('Capturing screen...');
+  
   // Get current tab info
   chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
     const currentTab = tabs[0];
@@ -553,7 +567,7 @@ function captureScreen(apiKey) {
     // Capture the visible tab content
     chrome.tabs.captureVisibleTab(currentTab.windowId, { format: 'png' }, (dataUrl) => {
       if (chrome.runtime.lastError) {
-        document.getElementById('status').textContent = 'Error capturing screen: ' + chrome.runtime.lastError.message;
+        showStatus('Error capturing screen: ' + chrome.runtime.lastError.message);
         return;
       }
       
@@ -576,7 +590,7 @@ function captureScreen(apiKey) {
         
         // Convert cropped canvas to data URL
         const croppedDataUrl = canvas.toDataURL('image/png');
-        processImage(croppedDataUrl, apiKey);
+        processImage(croppedDataUrl);
       };
       
       img.src = dataUrl;
@@ -584,7 +598,7 @@ function captureScreen(apiKey) {
   });
 }
 
-async function processImage(dataUrl, apiKey) {
+async function processImage(dataUrl) {
   // Show loading spinner and hide camera icon/text
   const cameraIcon = document.getElementById('camera-icon');
   const buttonText = document.getElementById('button-text');
@@ -595,57 +609,42 @@ async function processImage(dataUrl, apiKey) {
   loadingSpinner.style.display = 'block';
 
   try {
-    const messages = [
-      {
-        role: "user",
-        content: [
-          {
-            type: "text",
-
-            /*             text: "Guess this location's exact coordinates, and only output the coordinates of your best guess followed by the location's name or general regional location.  \
-This is for the game geoguessr, so use all the metas that a pro would use, and answer asap! \
-Your response should look something like this for example: 40.348600, -74.659300 Nassau Hall Princeton, New Jersey, United States."  */
-            text: "Guess this location's exact coordinates, and only output the coordinates of your best guess followed by the location's name or general regional location. This is for the game geoguessr, so use all the metas that a pro would use, and answer asap! Output your response in this JSON format only: {\"coordinates\": {\"lat\": 40.348600, \"lng\": -74.659300}, \"location\": \"Nassau Hall Princeton, New Jersey, United States\"} ALWAYS OUTPUT SOME JSON GUESS, EVEN IF YOU ARE NOT 100% CERTAIN. Take your best guess for sure though, just in edge cases." 
-          },
-          {
-            type: "image_url",
-            image_url: {
-              url: dataUrl
-            }
-          }
-        ]
-      }
-    ];
-
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    // Get current user from ExtPay
+    const user = await extpay.getUser();
+    const extpayUserId = user.userId || user.email || 'anonymous';
+    
+    // Call Firebase Function instead of OpenAI directly
+    const response = await fetch('https://us-central1-geoguesser-hacker-ext.cloudfunctions.net/processGeolocation', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`
       },
       body: JSON.stringify({
-        model: 'gpt-4o',
-        messages: messages,
-        max_tokens: 500
+        data: {
+          extpayUserId: extpayUserId,
+          imageData: dataUrl
+        }
       })
     });
 
     if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
+      const errorData = await response.json();
+      throw new Error(errorData.error?.message || `HTTP error! status: ${response.status}`);
     }
 
     const data = await response.json();
-    const responseText = data.choices[0].message.content;
+    const result = data.result;
     
-    // Calculate cost based on token usage
-    const tokensUsed = data.usage.total_tokens;
-    const costPerToken = 2.50 / 1000000; // $2.50 per 1M tokens for GPT-4o
-    const analysisCost = tokensUsed * costPerToken;
+    // Update cost display from Firebase response
+    updateCostDisplay(result.result.tokensUsed, result.result.cost);
     
-    // Update cost display and save to storage
-    updateCostDisplay(tokensUsed, analysisCost);
+    // Update usage display
+    updateUsageDisplay(result.usage);
     
-    const locationData = extractLocationFromResponse(responseText);
+    const locationData = {
+      coordinates: result.result.coordinates,
+      description: result.result.location
+    };
     
     if (locationData.coordinates) {
       document.getElementById('coords').textContent = `${locationData.coordinates.lat}, ${locationData.coordinates.lng}`;
@@ -669,7 +668,15 @@ Your response should look something like this for example: 40.348600, -74.659300
 
   } catch (error) {
     console.error('Error:', error);
-    document.getElementById('status').textContent = 'Error processing image: ' + error.message;
+    
+    // Handle specific error types
+    if (error.message.includes('resource-exhausted')) {
+      showStatus('Usage limit reached. Please upgrade your plan or wait for reset.');
+    } else if (error.message.includes('permission-denied')) {
+      showStatus('Subscription required. Please upgrade to continue.');
+    } else {
+      showStatus('Error processing image: ' + error.message);
+    }
     
     // Restore original button state
     cameraIcon.style.display = 'inline';
@@ -749,6 +756,199 @@ function updateCostDisplay(tokensUsed, analysisCost) {
 function updateSessionCost(sessionCost) {
   document.getElementById('session-cost').textContent = `$${sessionCost.toFixed(6)}`;
 }
+
+// Firebase user initialization
+async function initializeFirebaseUser() {
+  try {
+    // Wait a bit for DOM to be ready
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    
+    const user = await extpay.getUser();
+    const extpayUserId = user.userId || user.email || 'anonymous';
+    
+    // Create/update user in Firebase
+    const response = await fetch('https://us-central1-geoguesser-hacker-ext.cloudfunctions.net/createUser', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        data: {
+          extpayUserId: extpayUserId,
+          email: user.email
+        }
+      })
+    });
+    
+    if (response.ok) {
+      console.log('Firebase user initialized successfully');
+      // Load usage information with a small delay
+      setTimeout(() => loadUsageInformation(extpayUserId), 500);
+    } else {
+      const errorData = await response.json();
+      console.error('Firebase user initialization failed:', errorData);
+    }
+  } catch (error) {
+    console.error('Error initializing Firebase user:', error);
+  }
+}
+
+// Load and display usage information
+async function loadUsageInformation(extpayUserId) {
+  try {
+    const response = await fetch('https://us-central1-geoguesser-hacker-ext.cloudfunctions.net/getUserUsage', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        data: { extpayUserId }
+      })
+    });
+    
+    if (response.ok) {
+      const data = await response.json();
+      updateUsageDisplay(data.result);
+    }
+  } catch (error) {
+    console.error('Error loading usage information:', error);
+  }
+}
+
+// Update usage display in UI
+function updateUsageDisplay(usage) {
+  // Find or create usage section
+  let usageSection = document.getElementById('usage-section');
+  
+  if (!usageSection) {
+    // Create the usage section
+    usageSection = document.createElement('div');
+    usageSection.id = 'usage-section';
+    usageSection.className = 'settings-section';
+    usageSection.innerHTML = `
+      <h3>Usage Statistics</h3>
+      <div class="usage-info">
+        <div class="usage-item">
+          <span class="usage-label">Current usage:</span>
+          <span class="usage-value" id="current-usage">0</span>
+        </div>
+        <div class="usage-item">
+          <span class="usage-label">Plan limit:</span>
+          <span class="usage-value" id="usage-limit">0</span>
+        </div>
+        <div class="usage-item">
+          <span class="usage-label">Resets on:</span>
+          <span class="usage-value" id="usage-reset">-</span>
+        </div>
+        <div class="usage-item">
+          <span class="usage-label">Plan type:</span>
+          <span class="usage-value" id="plan-type">Free</span>
+        </div>
+      </div>
+    `;
+    
+    // Try multiple insertion strategies
+    const settingsPage = document.getElementById('settings-page');
+    if (settingsPage) {
+      const premiumSection = settingsPage.querySelector('.payment-section');
+      if (premiumSection && premiumSection.parentNode === settingsPage) {
+        // Insert before premium section if found
+        settingsPage.insertBefore(usageSection, premiumSection);
+      } else {
+        // Fallback: append to settings page
+        settingsPage.appendChild(usageSection);
+      }
+    } else {
+      // Fallback: add to main page if settings page not found
+      const mainContent = document.querySelector('.sidepanel-container');
+      if (mainContent) {
+        mainContent.appendChild(usageSection);
+      }
+    }
+  }
+  
+  // Update values safely
+  const currentUsageEl = document.getElementById('current-usage');
+  const usageLimitEl = document.getElementById('usage-limit');
+  const usageResetEl = document.getElementById('usage-reset');
+  const planTypeEl = document.getElementById('plan-type');
+  
+  if (currentUsageEl) currentUsageEl.textContent = usage.current || 0;
+  if (usageLimitEl) usageLimitEl.textContent = usage.limit || 3;
+  if (usageResetEl) {
+    usageResetEl.textContent = usage.resetDate ? 
+      new Date(usage.resetDate).toLocaleDateString() : '-';
+  }
+  if (planTypeEl) {
+    planTypeEl.textContent = capitalizeFirst(usage.subscriptionType || 'free');
+  }
+}
+
+// Sync subscription changes to Firebase
+async function syncSubscriptionToFirebase(user) {
+  try {
+    console.log('Syncing subscription to Firebase:', user);
+    
+    const extpayUserId = user.userId || user.email || 'anonymous';
+    let subscriptionType = 'free';
+    let subscriptionStatus = 'inactive';
+    
+    if (user.paid) {
+      // Determine subscription type based on plan details
+      // For now, we'll default to 'pro' for paid users
+      subscriptionType = 'pro';
+      subscriptionStatus = 'active';
+    } else if (user.trialStarted && !user.trialEnded) {
+      subscriptionType = 'free';
+      subscriptionStatus = 'trial';
+    }
+    
+    console.log('Subscription sync data:', { extpayUserId, subscriptionStatus, subscriptionType });
+    
+    const response = await fetch('https://us-central1-geoguesser-hacker-ext.cloudfunctions.net/updateSubscription', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        data: {
+          extpayUserId,
+          subscriptionStatus,
+          subscriptionType
+        }
+      })
+    });
+    
+    if (response.ok) {
+      console.log('Subscription synced to Firebase successfully');
+      // Force refresh usage information
+      setTimeout(() => loadUsageInformation(extpayUserId), 1000);
+    } else {
+      const errorData = await response.json();
+      console.error('Failed to sync subscription:', errorData);
+    }
+  } catch (error) {
+    console.error('Error syncing subscription to Firebase:', error);
+  }
+}
+
+function capitalizeFirst(str) {
+  return str.charAt(0).toUpperCase() + str.slice(1);
+}
+
+// Manual sync function for testing (callable from console)
+window.debugExtPay = async function() {
+  try {
+    const user = await extpay.getUser();
+    console.log('Current ExtPay user:', user);
+    await syncSubscriptionToFirebase(user);
+    await checkPaymentStatus();
+    return user;
+  } catch (error) {
+    console.error('Debug ExtPay error:', error);
+    return null;
+  }
+};
 
 // ExtPay payment functions
 async function initializePaymentStatus() {
@@ -844,12 +1044,23 @@ function updatePaymentUI(user) {
 }
 
 async function checkPremiumAccess() {
-  const isPaid = await checkPaymentStatus();
-  if (!isPaid) {
-    showStatus('This feature requires premium access. Please upgrade or start a free trial.');
+  try {
+    const user = await extpay.getUser();
+    console.log('ExtPay user status:', user);
+    
+    const isPaid = user.paid || user.trialStarted;
+    console.log('Premium access check:', { isPaid, paid: user.paid, trialStarted: user.trialStarted });
+    
+    if (!isPaid) {
+      showStatus('This feature requires premium access. Please upgrade or start a free trial.');
+      return false;
+    }
+    return true;
+  } catch (error) {
+    console.error('Error checking premium access:', error);
+    showStatus('Error checking subscription status. Please try again.');
     return false;
   }
-  return true;
 }
 
 function updatePremiumFeaturesList(user) {
