@@ -151,8 +151,16 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // Refresh payment status when the window regains focus (user returns from payment page)
+  // But only do this occasionally to avoid excessive API calls
+  let lastFocusRefresh = 0;
   window.addEventListener('focus', async () => {
+    const now = Date.now();
+    // Only refresh if it's been more than 30 seconds since last refresh
+    if (now - lastFocusRefresh < 30000) return;
+    
     console.log('Window focused, refreshing payment status...');
+    lastFocusRefresh = now;
+    
     try {
       const user = await extpay.getUser();
       await syncSubscriptionToFirebase(user);
@@ -167,9 +175,17 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // Also refresh when page becomes visible again
+  // But throttle this as well to avoid excessive calls
+  let lastVisibilityRefresh = 0;
   document.addEventListener('visibilitychange', async () => {
     if (!document.hidden) {
+      const now = Date.now();
+      // Only refresh if it's been more than 30 seconds since last refresh
+      if (now - lastVisibilityRefresh < 30000) return;
+      
       console.log('Page became visible, refreshing payment status...');
+      lastVisibilityRefresh = now;
+      
       await checkPaymentStatus();
       
       // Also refresh usage information
@@ -917,8 +933,18 @@ function updateUsageDisplay(usage) {
   if (currentUsageEl) currentUsageEl.textContent = usage.current || 0;
   if (usageLimitEl) usageLimitEl.textContent = usage.limit || 3;
   if (usageResetEl) {
-    usageResetEl.textContent = usage.resetDate ? 
-      new Date(usage.resetDate).toLocaleDateString() : '-';
+    if (usage.resetDate) {
+      // Handle Firestore timestamp format
+      let date;
+      if (usage.resetDate._seconds) {
+        date = new Date(usage.resetDate._seconds * 1000);
+      } else {
+        date = new Date(usage.resetDate);
+      }
+      usageResetEl.textContent = date.toLocaleDateString();
+    } else {
+      usageResetEl.textContent = '-';
+    }
   }
   if (planTypeEl) {
     planTypeEl.textContent = capitalizeFirst(usage.subscriptionType || 'free');
