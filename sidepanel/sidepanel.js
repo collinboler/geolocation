@@ -589,63 +589,129 @@ function toggleMapVisibility(showMap) {
 function captureScreen() {
   showStatus('Capturing screen...');
   
-  // Get current tab info
+  // First, let's test your theory - capture the tab and see if it includes sidebar
   chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
     const currentTab = tabs[0];
     
-    // Get window info to calculate sidebar width dynamically
-    chrome.windows.get(currentTab.windowId, (window) => {
-      // Capture the visible tab content
-      chrome.tabs.captureVisibleTab(currentTab.windowId, { format: 'png' }, (dataUrl) => {
-        if (chrome.runtime.lastError) {
-          showStatus('Error capturing screen: ' + chrome.runtime.lastError.message);
-          return;
-        }
-        
-        // Create canvas to crop out the side panel
-        const img = new Image();
-        img.onload = () => {
-          const canvas = document.createElement('canvas');
-          const ctx = canvas.getContext('2d');
+    console.log('TESTING: Does captureVisibleTab include the sidebar?');
+    
+    // Capture the visible tab content
+    chrome.tabs.captureVisibleTab(currentTab.windowId, { format: 'png' }, (dataUrl) => {
+      if (chrome.runtime.lastError) {
+        showStatus('Error capturing screen: ' + chrome.runtime.lastError.message);
+        return;
+      }
+      
+      // Get the actual sidebar width from our extension
+      const sidebarContainer = document.querySelector('.sidepanel-container');
+      const actualSidebarWidth = sidebarContainer ? sidebarContainer.offsetWidth : 360;
+      
+      // Get browser window info
+      chrome.windows.get(currentTab.windowId, (window) => {
+        // Get the actual tab content dimensions from the page
+        chrome.scripting.executeScript({
+          target: { tabId: currentTab.id },
+          func: () => {
+            return {
+              windowWidth: window.innerWidth,
+              windowHeight: window.innerHeight,
+              devicePixelRatio: window.devicePixelRatio || 1,
+              screenWidth: window.screen.width,
+              screenHeight: window.screen.height
+            };
+          }
+        }, (results) => {
+          if (chrome.runtime.lastError || !results || !results[0] || !results[0].result) {
+            console.error('Could not get page dimensions');
+            return;
+          }
           
-          // Calculate sidebar width dynamically
-          // The sidebar is typically about 20-25% of window width, with a minimum of 320px and maximum of 500px
-          const windowWidth = window.width;
-          const estimatedSidebarWidth = Math.min(Math.max(windowWidth * 0.22, 320), 500);
+          const pageInfo = results[0].result;
           
-          // Calculate the ratio between captured image and actual window
-          const imageToWindowRatio = img.width / windowWidth;
-          const sidePanelWidthInImage = Math.round(estimatedSidebarWidth * imageToWindowRatio);
-          
-          // Ensure we don't crop more than 80% of the image
-          const maxCropWidth = Math.floor(img.width * 0.8);
-          const cropWidth = Math.max(maxCropWidth, img.width - sidePanelWidthInImage);
-          
-          console.log('Capture info:', {
-            windowWidth,
-            imageWidth: img.width,
-            estimatedSidebarWidth,
-            sidePanelWidthInImage,
-            cropWidth,
-            ratio: imageToWindowRatio
-          });
-          
-          // Set canvas dimensions to exclude side panel
-          canvas.width = cropWidth;
-          canvas.height = img.height;
-          
-          // Draw only the main content area (excluding side panel)
-          ctx.drawImage(img, 0, 0, cropWidth, img.height, 0, 0, cropWidth, img.height);
-          
-          // Convert cropped canvas to data URL
-          const croppedDataUrl = canvas.toDataURL('image/png');
-          processImage(croppedDataUrl);
-        };
-        
-        img.src = dataUrl;
+          // Let's examine what we captured vs what we expected
+          const img = new Image();
+          img.onload = () => {
+            console.log('CAPTURE ANALYSIS:', {
+              'Tab content width (from page)': pageInfo.windowWidth,
+              'Browser window width': window.width,
+              'Sidebar width': actualSidebarWidth,
+              'Expected content width': pageInfo.windowWidth,
+              'Captured image width': img.width,
+              'Captured image height': img.height,
+              'Device pixel ratio': pageInfo.devicePixelRatio,
+              'Expected image width if no sidebar filtering': window.width * pageInfo.devicePixelRatio,
+              'Expected image width if sidebar filtered': pageInfo.windowWidth * pageInfo.devicePixelRatio
+            });
+            
+            // For now, let's just use the FULL captured image without any cropping
+            // This will tell us if the sidebar is included or not
+            console.log('USING FULL CAPTURED IMAGE - no cropping to test theory');
+            processImage(dataUrl);
+          };
+          img.src = dataUrl;
+        });
       });
     });
   });
+}
+
+function processCapturedImage(dataUrl, windowWidth, sidebarWidth, pageInfo = null) {
+  const img = new Image();
+  img.onload = () => {
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    
+    // Use the ACTUAL page content width if available, otherwise calculate
+    const actualContentWidth = pageInfo ? pageInfo.windowWidth : (windowWidth - sidebarWidth);
+    
+    // Calculate scaling factor based on browser window width
+    const imageToWindowRatio = img.width / windowWidth;
+    const targetImageWidth = Math.round(actualContentWidth * imageToWindowRatio);
+    
+    // Ensure we don't exceed the captured image bounds
+    const finalWidth = Math.min(targetImageWidth, img.width);
+    
+    console.log('Processing capture:', {
+      browserWindowWidth: windowWidth,
+      sidebarWidth,
+      actualContentWidth,
+      capturedImageWidth: img.width,
+      capturedImageHeight: img.height,
+      imageToWindowRatio,
+      targetImageWidth,
+      finalWidth,
+      pageInfo
+    });
+    
+    // Let's try taking the FULL captured image width instead of calculating
+    // The issue might be that we're under-calculating the target width
+    const fullCapturedWidth = img.width;
+    
+    console.log('DEBUG: Using full captured width instead:', {
+      calculatedTargetWidth: targetImageWidth,
+      fullCapturedWidth: fullCapturedWidth,
+      difference: fullCapturedWidth - targetImageWidth
+    });
+    
+    // Set canvas dimensions to the FULL captured width to test
+    canvas.width = fullCapturedWidth;
+    canvas.height = img.height;
+    
+    // Draw the ENTIRE captured image to see what we're working with
+    ctx.drawImage(
+      img,                    // source image
+      0, 0,                   // start from left edge of captured image
+      fullCapturedWidth, img.height, // take the FULL captured width
+      0, 0,                   // place at canvas origin
+      fullCapturedWidth, img.height  // fill the canvas with full captured image
+    );
+    
+    // Convert to data URL and process
+    const croppedDataUrl = canvas.toDataURL('image/png');
+    processImage(croppedDataUrl);
+  };
+  
+  img.src = dataUrl;
 }
 
 async function processImage(dataUrl) {
