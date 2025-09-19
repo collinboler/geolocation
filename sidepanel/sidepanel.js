@@ -157,16 +157,29 @@ document.addEventListener('DOMContentLoaded', () => {
       const user = await extpay.getUser();
       await syncSubscriptionToFirebase(user);
       await checkPaymentStatus();
+      
+      // Also refresh usage information
+      const extpayUserId = user.userId || user.email || 'anonymous';
+      loadUsageInformation(extpayUserId);
     } catch (error) {
       console.error('Error refreshing on focus:', error);
     }
   });
 
   // Also refresh when page becomes visible again
-  document.addEventListener('visibilitychange', () => {
+  document.addEventListener('visibilitychange', async () => {
     if (!document.hidden) {
       console.log('Page became visible, refreshing payment status...');
-      checkPaymentStatus();
+      await checkPaymentStatus();
+      
+      // Also refresh usage information
+      try {
+        const user = await extpay.getUser();
+        const extpayUserId = user.userId || user.email || 'anonymous';
+        loadUsageInformation(extpayUserId);
+      } catch (error) {
+        console.error('Error refreshing usage on visibility change:', error);
+      }
     }
   });
 
@@ -613,6 +626,9 @@ async function processImage(dataUrl) {
     const user = await extpay.getUser();
     const extpayUserId = user.userId || user.email || 'anonymous';
     
+    console.log('Processing image for user:', extpayUserId);
+    console.log('Calling Firebase function...');
+    
     // Call Firebase Function instead of OpenAI directly
     const response = await fetch('https://us-central1-geoguesser-hacker-ext.cloudfunctions.net/processGeolocation', {
       method: 'POST',
@@ -626,20 +642,39 @@ async function processImage(dataUrl) {
         }
       })
     });
+    
+    console.log('Firebase function response status:', response.status);
 
     if (!response.ok) {
       const errorData = await response.json();
+      console.error('Firebase function error:', errorData);
       throw new Error(errorData.error?.message || `HTTP error! status: ${response.status}`);
     }
 
+    console.log('Response OK, parsing JSON...');
     const data = await response.json();
+    console.log('Full response data:', data);
     const result = data.result;
+    
+    console.log('Firebase function response data:', result);
+    console.log('Usage from response:', result.usage);
     
     // Update cost display from Firebase response
     updateCostDisplay(result.result.tokensUsed, result.result.cost);
     
-    // Update usage display
+    // Update usage display immediately from response
     updateUsageDisplay(result.usage);
+    
+    // Also refresh usage from database after a short delay to ensure consistency
+    setTimeout(async () => {
+      try {
+        const user = await extpay.getUser();
+        const extpayUserId = user.userId || user.email || 'anonymous';
+        loadUsageInformation(extpayUserId);
+      } catch (error) {
+        console.error('Error refreshing usage after API call:', error);
+      }
+    }, 1000);
     
     const locationData = {
       coordinates: result.result.coordinates,
@@ -796,6 +831,7 @@ async function initializeFirebaseUser() {
 // Load and display usage information
 async function loadUsageInformation(extpayUserId) {
   try {
+    console.log('Loading usage information for user:', extpayUserId);
     const response = await fetch('https://us-central1-geoguesser-hacker-ext.cloudfunctions.net/getUserUsage', {
       method: 'POST',
       headers: {
@@ -808,7 +844,10 @@ async function loadUsageInformation(extpayUserId) {
     
     if (response.ok) {
       const data = await response.json();
+      console.log('Usage data received:', data.result);
       updateUsageDisplay(data.result);
+    } else {
+      console.error('Failed to load usage information:', response.status);
     }
   } catch (error) {
     console.error('Error loading usage information:', error);
@@ -817,6 +856,8 @@ async function loadUsageInformation(extpayUserId) {
 
 // Update usage display in UI
 function updateUsageDisplay(usage) {
+  console.log('updateUsageDisplay called with:', usage);
+  
   // Find or create usage section
   let usageSection = document.getElementById('usage-section');
   
