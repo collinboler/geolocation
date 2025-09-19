@@ -593,36 +593,57 @@ function captureScreen() {
   chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
     const currentTab = tabs[0];
     
-    // Capture the visible tab content
-    chrome.tabs.captureVisibleTab(currentTab.windowId, { format: 'png' }, (dataUrl) => {
-      if (chrome.runtime.lastError) {
-        showStatus('Error capturing screen: ' + chrome.runtime.lastError.message);
-        return;
-      }
-      
-      // Create canvas to crop out the side panel
-      const img = new Image();
-      img.onload = () => {
-        const canvas = document.createElement('canvas');
-        const ctx = canvas.getContext('2d');
+    // Get window info to calculate sidebar width dynamically
+    chrome.windows.get(currentTab.windowId, (window) => {
+      // Capture the visible tab content
+      chrome.tabs.captureVisibleTab(currentTab.windowId, { format: 'png' }, (dataUrl) => {
+        if (chrome.runtime.lastError) {
+          showStatus('Error capturing screen: ' + chrome.runtime.lastError.message);
+          return;
+        }
         
-        // Get the side panel width (approximately 400px)
-        const sidePanelWidth = 400;
-        const cropWidth = img.width - sidePanelWidth;
+        // Create canvas to crop out the side panel
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          const ctx = canvas.getContext('2d');
+          
+          // Calculate sidebar width dynamically
+          // The sidebar is typically about 20-25% of window width, with a minimum of 320px and maximum of 500px
+          const windowWidth = window.width;
+          const estimatedSidebarWidth = Math.min(Math.max(windowWidth * 0.22, 320), 500);
+          
+          // Calculate the ratio between captured image and actual window
+          const imageToWindowRatio = img.width / windowWidth;
+          const sidePanelWidthInImage = Math.round(estimatedSidebarWidth * imageToWindowRatio);
+          
+          // Ensure we don't crop more than 80% of the image
+          const maxCropWidth = Math.floor(img.width * 0.8);
+          const cropWidth = Math.max(maxCropWidth, img.width - sidePanelWidthInImage);
+          
+          console.log('Capture info:', {
+            windowWidth,
+            imageWidth: img.width,
+            estimatedSidebarWidth,
+            sidePanelWidthInImage,
+            cropWidth,
+            ratio: imageToWindowRatio
+          });
+          
+          // Set canvas dimensions to exclude side panel
+          canvas.width = cropWidth;
+          canvas.height = img.height;
+          
+          // Draw only the main content area (excluding side panel)
+          ctx.drawImage(img, 0, 0, cropWidth, img.height, 0, 0, cropWidth, img.height);
+          
+          // Convert cropped canvas to data URL
+          const croppedDataUrl = canvas.toDataURL('image/png');
+          processImage(croppedDataUrl);
+        };
         
-        // Set canvas dimensions to exclude side panel
-        canvas.width = cropWidth;
-        canvas.height = img.height;
-        
-        // Draw only the main content area (excluding side panel)
-        ctx.drawImage(img, 0, 0, cropWidth, img.height, 0, 0, cropWidth, img.height);
-        
-        // Convert cropped canvas to data URL
-        const croppedDataUrl = canvas.toDataURL('image/png');
-        processImage(croppedDataUrl);
-      };
-      
-      img.src = dataUrl;
+        img.src = dataUrl;
+      });
     });
   });
 }
@@ -643,6 +664,9 @@ async function processImage(dataUrl) {
     const extpayUserId = user.userId || user.email || 'anonymous';
     
     console.log('Processing image for user:', extpayUserId);
+    console.log('Image data length:', dataUrl.length);
+    console.log('Image data preview:', dataUrl.substring(0, 100) + '...');
+    console.log('Full base64 image data:', dataUrl);
     console.log('Calling Firebase function...');
     
     // Call Firebase Function instead of OpenAI directly
