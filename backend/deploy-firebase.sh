@@ -10,9 +10,18 @@ if ! command -v firebase &> /dev/null; then
     exit 1
 fi
 
+# Change to backend directory
+cd "$(dirname "$0")"
+echo "📁 Working from backend directory: $(pwd)"
+
 # Login to Firebase (if not already logged in)
 echo "🔐 Checking Firebase authentication..."
-firebase login --reauth
+if ! firebase projects:list >/dev/null 2>&1; then
+    echo "🔑 Authentication required. Logging in..."
+    firebase login
+else
+    echo "✅ Already authenticated"
+fi
 
 # Initialize Firebase project (if not already initialized)
 if [ ! -f ".firebaserc" ]; then
@@ -41,13 +50,17 @@ echo "☁️  Deploying Firebase Functions..."
 firebase deploy --only functions
 
 # Get the deployed function URLs
-PROJECT_ID=$(firebase projects:list --format=json | jq -r '.[0].projectId')
+PROJECT_ID=$(firebase use --json 2>/dev/null | grep -o '"[^"]*"' | head -1 | tr -d '"' || echo "geoguesser-hacker-ext")
+if [ -z "$PROJECT_ID" ] || [ "$PROJECT_ID" = "null" ]; then
+    PROJECT_ID="geoguesser-hacker-ext"
+fi
+
 echo ""
 echo "✅ Deployment complete!"
 echo ""
 echo "📋 Update your extension with these URLs:"
 echo "   Project ID: $PROJECT_ID"
-echo "   Functions URL: https://$PROJECT_ID.cloudfunctions.net/"
+echo "   Functions URL: https://us-central1-$PROJECT_ID.cloudfunctions.net/"
 echo ""
 echo "🔧 Next steps:"
 echo "   1. Update sidepanel.js with your Project ID"

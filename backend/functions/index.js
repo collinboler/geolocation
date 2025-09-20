@@ -1,0 +1,548 @@
+const {onRequest, onCall, HttpsError} = require("firebase-functions/v2/https");
+const {onDocumentCreated} = require("firebase-functions/v2/firestore");
+const {initializeApp} = require("firebase-admin/app");
+const {getFirestore, FieldValue} = require("firebase-admin/firestore");
+const OpenAI = require("openai");
+const cors = require("cors")({origin: true});
+
+// Initialize Firebase Admin
+initializeApp();
+const db = getFirestore();
+
+// Usage limits by subscription type
+const USAGE_LIMITS = {
+  free: {limit: 3, period: "week"}, // 3 per week for trial users
+  standard: {limit: 100, period: "month"}, // 100 per month
+  pro: {limit: 1000, period: "month"}, // 1000 per month
+};
+
+/**
+ * Create or update user in Firestore when they first use the extension
+ */
+exports.createUser = onCall(async (request) => {
+  const {extpayUserId, email} = request.data;
+
+  if (!extpayUserId) {
+    throw new HttpsError("invalid-argument", "ExtPay User ID is required");
+  }
+
+  try {
+    const userRef = db.collection("users").doc(extpayUserId);
+    const userDoc = await userRef.get();
+
+    if (!userDoc.exists) {
+      // Create new user
+      const userData = {
+        extpayUserId,
+        email: email || null,
+        subscriptionType: "free",
+        subscriptionStatus: "trial",
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        usage: {
+          current: 0,
+          resetDate: getNextResetDate("week"),
+          history: [],
+        },
+      };
+
+      await userRef.set(userData);
+      return {success: true, user: userData};
+    } else {
+      // User exists, update last seen
+      await userRef.update({
+        updatedAt: new Date(),
+        ...(email && {email}),
+      });
+      return {success: true, user: userDoc.data()};
+    }
+  } catch (error) {
+    console.error("Error creating/updating user:", error);
+    throw new HttpsError("internal", "Failed to create/update user");
+  }
+});
+
+/**
+ * Update user subscription status (called via ExtPay webhooks)
+ */
+exports.updateSubscription = onCall(async (request) => {
+  const {extpayUserId, subscriptionStatus, subscriptionType} = request.data;
+
+  if (!extpayUserId) {
+    throw new HttpsError("invalid-argument", "ExtPay User ID is required");
+  }
+
+  try {
+    const userRef = db.collection("users").doc(extpayUserId);
+    const userDoc = await userRef.get();
+    const userData = userDoc.data();
+    
+    const updates = {
+      updatedAt: new Date(),
+    };
+
+    if (subscriptionStatus) {
+      updates.subscriptionStatus = subscriptionStatus;
+    }
+
+    if (subscriptionType) {
+      // Only reset usage if subscription type actually changed
+      const currentSubscriptionType = userData?.subscriptionType;
+      if (currentSubscriptionType !== subscriptionType) {
+        console.log(`Subscription type changed from ${currentSubscriptionType} to ${subscriptionType}, resetting usage`);
+        updates.subscriptionType = subscriptionType;
+        updates.usage = {
+          current: 0,
+          resetDate: getNextResetDate(USAGE_LIMITS[subscriptionType]?.period || "month"),
+          history: [],
+        };
+      } else {
+        // Just update subscription type without resetting usage
+        updates.subscriptionType = subscriptionType;
+      }
+    }
+
+    await userRef.update(updates);
+    return {success: true};
+  } catch (error) {
+    console.error("Error updating subscription:", error);
+    throw new HttpsError("internal", "Failed to update subscription");
+  }
+});
+
+/**
+ * Main function to process geolocation requests
+ */
+exports.processGeolocation = onCall(async (request) => {
+  const {extpayUserId, imageData} = request.data;
+
+  if (!extpayUserId || !imageData) {
+    throw new HttpsError("invalid-argument", "User ID and image data are required");
+  }
+
+  try {
+    // Get user and check subscription/usage
+    const userRef = db.collection("users").doc(extpayUserId);
+    const userDoc = await userRef.get();
+
+    if (!userDoc.exists) {
+      throw new HttpsError("not-found", "User not found");
+    }
+
+    const userData = userDoc.data();
+
+    // Check if user has valid subscription or trial
+    if (!hasValidAccess(userData)) {
+      throw new HttpsError("permission-denied", "Subscription required");
+    }
+
+    // Check usage limits
+    const usageCheck = await checkUsageLimit(userData);
+    if (!usageCheck.allowed) {
+      throw new HttpsError("resource-exhausted",
+          `Usage limit exceeded. ${usageCheck.message}`);
+    }
+
+    // Get the OpenAI API key from Secret Manager
+    const {SecretManagerServiceClient} = require("@google-cloud/secret-manager");
+    const secretClient = new SecretManagerServiceClient();
+    
+    const [version] = await secretClient.accessSecretVersion({
+      name: "projects/geoguesser-hacker-ext/secrets/OPENAI_API_KEY/versions/latest",
+    });
+    
+    const apiKey = version.payload.data.toString();
+    
+    // Process the geolocation request with OpenAI
+    const geoResult = await processWithOpenAI(imageData, apiKey);
+
+    // Record usage
+    console.log("Recording usage for user:", extpayUserId, "Current usage before:", userData.usage?.current || 0);
+    await recordUsage(userRef, userData, geoResult);
+
+    // Get updated usage after recording
+    const updatedUserDoc = await userRef.get();
+    const updatedUserData = updatedUserDoc.data();
+    console.log("Usage after recording:", updatedUserData.usage?.current || 0);
+
+    return {
+      success: true,
+      result: geoResult,
+      usage: {
+        current: updatedUserData.usage.current,
+        limit: USAGE_LIMITS[userData.subscriptionType]?.limit || 3,
+        resetDate: userData.usage.resetDate,
+      },
+    };
+  } catch (error) {
+    console.error("Error processing geolocation:", error);
+    if (error instanceof HttpsError) {
+      throw error;
+    }
+    throw new HttpsError("internal", "Failed to process geolocation request");
+  }
+});
+
+/**
+ * Get user usage statistics
+ */
+exports.getUserUsage = onCall(async (request) => {
+  const {extpayUserId} = request.data;
+
+  if (!extpayUserId) {
+    throw new HttpsError("invalid-argument", "User ID is required");
+  }
+
+  try {
+    const userDoc = await db.collection("users").doc(extpayUserId).get();
+
+    if (!userDoc.exists) {
+      throw new HttpsError("not-found", "User not found");
+    }
+
+    const userData = userDoc.data();
+    const subscriptionType = userData.subscriptionType || "free";
+    const limit = USAGE_LIMITS[subscriptionType]?.limit || 3;
+
+    return {
+      current: userData.usage?.current || 0,
+      limit,
+      resetDate: userData.usage?.resetDate,
+      subscriptionType,
+      subscriptionStatus: userData.subscriptionStatus,
+    };
+  } catch (error) {
+    console.error("Error getting user usage:", error);
+    throw new HttpsError("internal", "Failed to get user usage");
+  }
+});
+
+/**
+ * Reset usage counters (scheduled function)
+ */
+exports.resetUsageCounters = onRequest(async (req, res) => {
+  return cors(req, res, async () => {
+    try {
+      const now = new Date();
+      const usersRef = db.collection("users");
+
+      // Get users whose reset date has passed
+      const snapshot = await usersRef
+          .where("usage.resetDate", "<=", now)
+          .get();
+
+      const batch = db.batch();
+      let resetCount = 0;
+
+      snapshot.forEach((doc) => {
+        const userData = doc.data();
+        const subscriptionType = userData.subscriptionType || "free";
+        const period = USAGE_LIMITS[subscriptionType]?.period || "week";
+
+        batch.update(doc.ref, {
+          "usage.current": 0,
+          "usage.resetDate": getNextResetDate(period),
+          updatedAt: now,
+        });
+        resetCount++;
+      });
+
+      await batch.commit();
+
+      res.json({
+        success: true,
+        message: `Reset usage for ${resetCount} users`,
+      });
+    } catch (error) {
+      console.error("Error resetting usage counters:", error);
+      res.status(500).json({error: "Failed to reset usage counters"});
+    }
+  });
+});
+
+// Helper Functions
+
+/**
+ * Calculate image token cost based on OpenAI vision pricing for GPT-5-mini
+ * Uses 32px patch-based calculation with 1.62 multiplier
+ */
+function calculateImageTokenCost(imageWidth, imageHeight, detail = "low") {
+  // A. Calculate the number of 32px x 32px patches needed
+  const rawPatches = Math.ceil(imageWidth / 32) * Math.ceil(imageHeight / 32);
+  
+  let finalPatches = rawPatches;
+  let scaledWidth = imageWidth;
+  let scaledHeight = imageHeight;
+  
+  // B. If patches exceed 1536, scale down the image
+  if (rawPatches > 1536) {
+    // Calculate shrink factor
+    const r = Math.sqrt((32 * 32 * 1536) / (imageWidth * imageHeight));
+    
+    // Apply initial scaling
+    const initialWidth = imageWidth * r;
+    const initialHeight = imageHeight * r;
+    
+    // Ensure we fit in whole number of patches
+    const patchesWidth = initialWidth / 32;
+    const patchesHeight = initialHeight / 32;
+    const adjustmentFactor = Math.min(
+      Math.floor(patchesWidth) / patchesWidth,
+      Math.floor(patchesHeight) / patchesHeight
+    );
+    
+    // Final scaled dimensions
+    scaledWidth = Math.floor(initialWidth * adjustmentFactor);
+    scaledHeight = Math.floor(initialHeight * adjustmentFactor);
+    
+    // C. Calculate final patches
+    finalPatches = Math.ceil(scaledWidth / 32) * Math.ceil(scaledHeight / 32);
+  }
+  
+  // Cap at maximum of 1536 patches
+  const imageTokens = Math.min(finalPatches, 1536);
+  
+  // D. Apply GPT-5-mini multiplier (1.62)
+  const multiplier = 1.62;
+  const totalTokens = Math.round(imageTokens * multiplier);
+  
+  console.log('GPT-5-mini token calculation:', {
+    imageWidth,
+    imageHeight,
+    rawPatches,
+    scaledWidth,
+    scaledHeight,
+    finalPatches,
+    imageTokens,
+    multiplier,
+    totalTokens
+  });
+  
+  return totalTokens;
+}
+
+/**
+ * Extract image dimensions from base64 data URL
+ */
+async function getImageDimensions(dataUrl) {
+  const sharp = require('sharp');
+  
+  try {
+    // Extract base64 data from data URL
+    const base64Data = dataUrl.split(',')[1];
+    const imageBuffer = Buffer.from(base64Data, 'base64');
+    
+    // Use Sharp to get image metadata
+    const metadata = await sharp(imageBuffer).metadata();
+    
+    return {
+      width: metadata.width,
+      height: metadata.height
+    };
+  } catch (error) {
+    console.error('Error getting image dimensions:', error);
+    // Fallback to reasonable defaults if we can't get dimensions
+    return {
+      width: 1920,
+      height: 1080
+    };
+  }
+}
+
+/**
+ * Process image with OpenAI
+ */
+async function processWithOpenAI(imageData, apiKey) {
+  try {
+    // Get image dimensions for accurate cost calculation
+    const imageDimensions = await getImageDimensions(imageData);
+    console.log('Image dimensions:', imageDimensions);
+    
+    // Calculate image token cost based on OpenAI vision pricing
+    const imageTokens = calculateImageTokenCost(imageDimensions.width, imageDimensions.height, "low");
+    console.log('Calculated image tokens:', imageTokens);
+    
+    // Initialize OpenAI with the provided API key
+    const openai = new OpenAI({
+      apiKey: apiKey,
+    });
+    
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [
+        {
+          role: "user",
+          content: [
+            {
+              type: "text",
+              text: `Look at this image carefully and identify the location. Analyze any visible text, signs, architecture, landscape, vegetation, vehicles, and other clues to determine where this photo was taken. Use your knowledge like a professional GeoGuessr player.
+
+Provide your best guess for the exact coordinates and location name in this JSON format:
+{"coordinates": {"lat": 40.348600, "lng": -74.659300}, "location": "Nassau Hall Princeton, New Jersey, United States"}
+
+Even if you're not 100% certain, make your best educated guess based on the visual evidence.`,
+            },
+            {
+              type: "image_url",
+              image_url: {
+                url: imageData,
+                detail: "high"
+              },
+            },
+          ],
+        },
+      ],
+      max_completion_tokens: 3000,
+    });
+
+    // Debug the full response structure
+    console.log('Full OpenAI response structure:', {
+      choices: response.choices,
+      usage: response.usage,
+      model: response.model,
+      object: response.object
+    });
+
+    const responseText = response.choices[0]?.message?.content;
+    const textTokens = response.usage?.completion_tokens || 0;
+    const totalTokens = imageTokens + textTokens;
+    
+    console.log('Response parsing:', {
+      choicesLength: response.choices?.length,
+      firstChoice: response.choices?.[0],
+      messageContent: responseText,
+      contentLength: responseText?.length
+    });
+    
+    // GPT-5-mini pricing: Input $0.25 per 1M tokens, Output $2.00 per 1M tokens
+    const inputCost = (imageTokens * 0.25) / 1000000;
+    const outputCost = (textTokens * 2.00) / 1000000;
+    const totalCost = inputCost + outputCost;
+    
+    console.log('Token breakdown:', {
+      imageTokens,
+      textTokens,
+      totalTokens,
+      inputCost,
+      outputCost,
+      totalCost
+    });
+
+    if (!responseText) {
+      console.error("Empty response from OpenAI, using fallback. Response text:", responseText);
+      return {
+        coordinates: { lat: 0, lng: 0 },
+        location: "Unknown - Empty OpenAI response",
+        tokensUsed: totalTokens,
+        cost: totalCost,
+        rawResponse: "Empty response"
+      };
+    }
+
+    // Parse the JSON response
+    let locationData;
+    try {
+      const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        locationData = JSON.parse(jsonMatch[0]);
+      } else {
+        throw new Error("No JSON found in response");
+      }
+    } catch (parseError) {
+      // Fallback parsing
+      const coordMatch = responseText.match(/(\d+\.\d+)[,\s]+(-?\d+\.\d+)/);
+      if (coordMatch) {
+        locationData = {
+          coordinates: {
+            lat: parseFloat(coordMatch[1]),
+            lng: parseFloat(coordMatch[2]),
+          },
+          location: responseText.replace(coordMatch[0], "").trim(),
+        };
+      } else {
+        console.error("Failed to parse response:", responseText);
+        throw new Error("Could not parse location from response");
+      }
+    }
+
+    return {
+      coordinates: locationData.coordinates,
+      location: locationData.location,
+      tokensUsed: totalTokens,
+      cost: totalCost,
+      rawResponse: responseText,
+    };
+  } catch (error) {
+    console.error("OpenAI API Error:", error);
+    throw new HttpsError("internal", "Failed to process image with AI");
+  }
+}
+
+/**
+ * Check if user has valid access
+ */
+function hasValidAccess(userData) {
+  const status = userData.subscriptionStatus;
+  return status === "trial" || status === "active" || status === "paid";
+}
+
+/**
+ * Check usage limits
+ */
+function checkUsageLimit(userData) {
+  const subscriptionType = userData.subscriptionType || "free";
+  const usage = userData.usage || {current: 0};
+  const limit = USAGE_LIMITS[subscriptionType]?.limit || 3;
+
+  if (usage.current >= limit) {
+    const period = USAGE_LIMITS[subscriptionType]?.period || "week";
+    const resetDate = new Date(userData.usage?.resetDate).toLocaleDateString();
+
+    return {
+      allowed: false,
+      message: `You've reached your ${period}ly limit of ${limit} requests. Resets on ${resetDate}.`,
+    };
+  }
+
+  return {allowed: true};
+}
+
+/**
+ * Record usage in Firestore
+ */
+async function recordUsage(userRef, userData, geoResult) {
+  const now = new Date();
+  const usageEntry = {
+    timestamp: now,
+    tokensUsed: geoResult.tokensUsed,
+    cost: geoResult.cost,
+    coordinates: geoResult.coordinates,
+  };
+
+  // Use atomic increment for usage counter and update history
+  await userRef.update({
+    "usage.current": FieldValue.increment(1),
+    "usage.history": FieldValue.arrayUnion(usageEntry),
+    updatedAt: now,
+  });
+}
+
+/**
+ * Calculate next reset date
+ */
+function getNextResetDate(period) {
+  const now = new Date();
+  const resetDate = new Date(now);
+
+  if (period === "week") {
+    // Reset every Monday
+    const daysUntilMonday = (8 - now.getDay()) % 7;
+    resetDate.setDate(now.getDate() + (daysUntilMonday || 7));
+  } else if (period === "month") {
+    // Reset on first day of next month
+    resetDate.setMonth(now.getMonth() + 1, 1);
+  }
+
+  resetDate.setHours(0, 0, 0, 0);
+  return resetDate;
+}
