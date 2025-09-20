@@ -2,6 +2,4 @@ Chrome Extension that uses LLMs to guess your onscreen location using AI compute
 
 Download [here](https://chromewebstore.google.com/detail/geoguesser-hacker/ogjhgcaaaclhdaalliolbhibppalepkj?hl=en)
 
-Supports OpenAI GPT-4o; more models coming soon
-
-**6,000+ downloads and counting**
+**6,000+ downloads, 2,000+ weekly users and counting**
