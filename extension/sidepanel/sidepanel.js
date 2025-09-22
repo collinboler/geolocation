@@ -874,7 +874,31 @@ async function loadUsageInformation(extpayUserId) {
     if (response.ok) {
       const data = await response.json();
       console.log('Usage data received:', data.result);
+      console.log('Backend subscription flags:', {
+        isCancelled: data.result.isCancelled,
+        isPastDue: data.result.isPastDue,
+        subscriptionType: data.result.subscriptionType,
+        subscriptionStatus: data.result.subscriptionStatus
+      });
+      
+      // Store backend flags globally for UI updates
+      window.backendSubscriptionFlags = {
+        isCancelled: data.result.isCancelled,
+        isPastDue: data.result.isPastDue,
+        subscriptionType: data.result.subscriptionType,
+        subscriptionStatus: data.result.subscriptionStatus
+      };
+      
       updateUsageDisplay(data.result);
+      
+      // Update UI with backend subscription flags
+      try {
+        const user = await extpay.getUser();
+        updatePaymentUI(user);
+        updateUpgradeCardHeader(user);
+      } catch (error) {
+        console.error('Error updating UI with backend flags:', error);
+      }
     } else {
       console.error('Failed to load usage information:', response.status);
     }
@@ -921,10 +945,10 @@ async function updateUsageDisplay(usage) {
             <span class="usage-label">Plan limit:</span>
             <span class="usage-value" id="usage-limit">0</span>
           </div>
-          <div class="usage-item">
-            <span class="usage-label">Resets on:</span>
-            <span class="usage-value" id="usage-reset">-</span>
-          </div>
+                <div class="usage-item">
+                  <span class="usage-label" id="reset-label">Resets on:</span>
+                  <span class="usage-value" id="usage-reset">-</span>
+                </div>
           <div class="usage-item">
             <span class="usage-label">Plan type:</span>
             <span class="usage-value" id="plan-type">Free</span>
@@ -961,10 +985,21 @@ async function updateUsageDisplay(usage) {
   const currentUsageEl = document.getElementById('current-usage');
   const usageLimitEl = document.getElementById('usage-limit');
   const usageResetEl = document.getElementById('usage-reset');
+  const resetLabelEl = document.getElementById('reset-label');
   const planTypeEl = document.getElementById('plan-type');
   
   if (currentUsageEl) currentUsageEl.textContent = usage.current || 0;
   if (usageLimitEl) usageLimitEl.textContent = usage.limit || 3;
+  
+  // Update the reset label based on cancellation status
+  if (resetLabelEl) {
+    if (usage.isCancelled) {
+      resetLabelEl.textContent = 'Expiring on:';
+    } else {
+      resetLabelEl.textContent = 'Resets on:';
+    }
+  }
+  
   if (usageResetEl) {
     if (usage.resetDate) {
       // Handle Firestore timestamp format
@@ -1001,24 +1036,38 @@ async function syncSubscriptionToFirebase(user) {
     let subscriptionType = 'free';
     let subscriptionStatus = 'inactive';
     
-    // Check if subscription is active - only past_due loses access, canceled keeps access until term ends
-    const isSubscriptionActive = user.paid && 
-      (!user.subscriptionStatus || user.subscriptionStatus !== 'past_due');
-    
-    if (isSubscriptionActive) {
-      // User has active paid subscription (including canceled but still active)
-      subscriptionType = 'pro';
-      subscriptionStatus = user.subscriptionStatus || 'active';
-    } else if (user.paid && user.subscriptionStatus === 'past_due') {
-      // User had paid subscription but payment is past due - treat as free
-      subscriptionType = 'free';
-      subscriptionStatus = 'past_due';
+    // Check subscription status - cancelled users keep pro access until term end, past_due lose access immediately
+    if (user.paid) {
+      if (user.subscriptionStatus === 'past_due') {
+        // User had paid subscription but payment is past due - treat as free
+        subscriptionType = 'free';
+        subscriptionStatus = 'past_due';
+      } else {
+        // User has active subscription (including cancelled but still within term)
+        subscriptionType = 'pro';
+        subscriptionStatus = user.subscriptionStatus || 'active';
+      }
     } else if (user.trialStartedAt && !user.trialEnded) {
       subscriptionType = 'free';
       subscriptionStatus = 'trial';
     }
     
-    console.log('Subscription sync data:', { extpayUserId, subscriptionStatus, subscriptionType });
+    // Determine subscription status flags
+    const isCancelled = user.subscriptionStatus === 'canceled';
+    const isPastDue = user.subscriptionStatus === 'past_due';
+    
+    console.log('ExtPay user object:', user);
+    console.log('Subscription sync data:', { 
+      extpayUserId, 
+      subscriptionStatus, 
+      subscriptionType, 
+      isCancelled, 
+      isPastDue,
+      userPaid: user.paid,
+      userSubscriptionStatus: user.subscriptionStatus,
+      userTrialStartedAt: user.trialStartedAt,
+      userTrialEnded: user.trialEnded
+    });
     
     const response = await fetch('https://us-central1-geoguesser-hacker-ext.cloudfunctions.net/updateSubscription', {
       method: 'POST',
@@ -1029,7 +1078,9 @@ async function syncSubscriptionToFirebase(user) {
         data: {
           extpayUserId,
           subscriptionStatus,
-          subscriptionType
+          subscriptionType,
+          isCancelled,
+          isPastDue
         }
       })
     });
@@ -1132,12 +1183,13 @@ function updatePaymentUI(user) {
   // Check for cancelled subscription warning
   checkCancelledSubscriptionWarning(user);
   
-  // Check if subscription is active - only past_due loses access, canceled keeps access until term ends
-  const isSubscriptionActive = user.paid && 
-    (!user.subscriptionStatus || user.subscriptionStatus !== 'past_due');
+  // Check subscription status using backend flags if available, otherwise fallback to ExtPay status
+  const backendFlags = window.backendSubscriptionFlags;
+  const isPastDueUser = backendFlags?.isPastDue || (user.paid && user.subscriptionStatus === 'past_due');
+  const isSubscriptionActive = user.paid && !isPastDueUser;
 
   if (isSubscriptionActive) {
-    // User has active paid subscription (including canceled but still active) - make button clickable to manage plan
+    // User has active paid subscription (including cancelled but still active) - make button clickable to manage plan
     paymentButton.innerHTML = `
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <circle cx="12" cy="12" r="3"/>
@@ -1154,11 +1206,25 @@ function updatePaymentUI(user) {
     
   } else if (user.trialStartedAt && !user.paid) {
     // User is on trial - hide sign-in button and show upgrade button
+    // Check if this is a past due user who should see "Renew Pro"
+    // This could be a user who previously had a subscription but is now in trial mode due to payment issues
+    const hasEmailDomain = user.email && (user.email.includes('@gmail.com') || user.email.includes('@'));
+    const isLikelyPastDue = backendFlags?.subscriptionType === 'free' && 
+                           backendFlags?.subscriptionStatus === 'trial' && 
+                           user.paid === false && 
+                           hasEmailDomain && 
+                           user.installedAt; // User has been around for a while
+    
+    const shouldShowRenew = isLikelyPastDue;
+    
     paymentButton.innerHTML = `
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+        ${shouldShowRenew ? 
+          '<path d="M1 4v6h6M23 20v-6h-6"/><path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15"/>' :
+          '<path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>'
+        }
       </svg>
-      Upgrade to Pro
+      ${shouldShowRenew ? 'Renew Pro' : 'Upgrade to Pro'}
     `;
     paymentButton.classList.remove('premium-active');
     paymentButton.classList.add('trial-active');
@@ -1168,14 +1234,14 @@ function updatePaymentUI(user) {
     // Don't show sign-in button for users who already have trial
     signInButton.style.display = 'none';
     
-  } else if (user.paid && user.subscriptionStatus === 'past_due') {
-    // User's payment is past due - treat as trial user with "Renew Subscription" button
+  } else if (isPastDueUser) {
+    // User's payment is past due - treat as trial user with "Renew Pro" button
     paymentButton.innerHTML = `
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <path d="M1 4v6h6M23 20v-6h-6"/>
         <path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15"/>
       </svg>
-      Renew Subscription
+      Renew Pro
     `;
     paymentButton.classList.remove('premium-active');
     paymentButton.classList.add('trial-active');
@@ -1200,9 +1266,10 @@ async function checkPremiumAccess() {
     const user = await extpay.getUser();
     console.log('ExtPay user status:', user);
     
-    // Check subscription status - only past_due loses access, canceled keeps access until term ends
-    const isSubscriptionActive = user.paid && 
-      (!user.subscriptionStatus || user.subscriptionStatus !== 'past_due');
+    // Check subscription status using backend flags if available, otherwise fallback to ExtPay status
+    const backendFlags = window.backendSubscriptionFlags;
+    const isPastDueUser = backendFlags?.isPastDue || (user.paid && user.subscriptionStatus === 'past_due');
+    const isSubscriptionActive = user.paid && !isPastDueUser;
     
     const hasActiveTrial = user.trialStartedAt && !user.paid; // Trial active if trialStartedAt exists and not paid
     const hasAccess = isSubscriptionActive || hasActiveTrial;
@@ -1219,11 +1286,9 @@ async function checkPremiumAccess() {
     if (!hasAccess) {
       // Check if user is authenticated but just not premium
       if (user.paid || user.trialStartedAt) {
-        // User is authenticated but doesn't have premium access (past_due, canceled, or free trial limit reached)
+        // User is authenticated but doesn't have premium access (past_due or free trial limit reached)
         if (user.subscriptionStatus === 'past_due') {
-          showStatus('Your subscription is past due. Please update your payment method to continue using premium features.');
-        } else if (user.subscriptionStatus === 'canceled') {
-          showStatus('Your subscription has been cancelled. Please reactivate to continue using premium features.');
+          showStatus('Your subscription payment is past due. Please renew your subscription to continue using premium features.');
         } else {
           showStatus('This feature requires premium access. Please upgrade or start a free trial.');
         }
@@ -1242,42 +1307,56 @@ async function checkPremiumAccess() {
 }
 
 function updateUpgradeCardHeader(user) {
-  const upgradeHeader = document.querySelector('.upgrade-header h3');
+  const upgradeHeaderH3 = document.querySelector('.upgrade-header h3');
+  const upgradeHeaderDiv = document.querySelector('.upgrade-header');
   const upgradeIcon = document.querySelector('.upgrade-icon');
   const upgradeCard = document.querySelector('.upgrade-card');
   
-  if (!upgradeHeader || !upgradeIcon || !upgradeCard) return;
+  if (!upgradeHeaderH3 || !upgradeHeaderDiv || !upgradeIcon || !upgradeCard) return;
   
   // Reset classes
   upgradeCard.classList.remove('pro-active', 'trial-active');
+  upgradeHeaderDiv.classList.remove('pro-active');
   
-  // Check if subscription is active - only past_due loses access, canceled keeps access until term ends
-  const isSubscriptionActive = user.paid && 
-    (!user.subscriptionStatus || user.subscriptionStatus !== 'past_due');
+  // Check subscription status using backend flags if available, otherwise fallback to ExtPay status
+  const backendFlags = window.backendSubscriptionFlags;
+  const isPastDueUser = backendFlags?.isPastDue || (user.paid && user.subscriptionStatus === 'past_due');
+  const isCancelledUser = backendFlags?.isCancelled || (user.paid && user.subscriptionStatus === 'canceled');
+  const isSubscriptionActive = user.paid && !isPastDueUser;
 
   if (isSubscriptionActive) {
-    // User has active pro subscription (including canceled but still active) - show "Pro Mode Activated"
-    upgradeHeader.textContent = 'Pro Mode Activated';
+    // User has active pro subscription (including cancelled but still within term) - show "Pro Mode Activated"
+    upgradeHeaderH3.textContent = 'Pro Mode Activated';
+    upgradeHeaderDiv.classList.add('pro-active');
     upgradeCard.classList.add('pro-active');
-    // Change icon to a checkmark
-    upgradeIcon.innerHTML = `
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" class="upgrade-icon">
-        <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
-      </svg>
-    `;
+    // Remove icon for cleaner look
+    upgradeIcon.innerHTML = '';
   } else if (user.trialStartedAt && !user.paid) {
-    // User is on trial
-    upgradeHeader.textContent = 'Trial Active - Upgrade to Pro';
+    // User is on trial - check if this is a past due user who should see "Renew Pro"
+    // This could be a user who previously had a subscription but is now in trial mode due to payment issues
+    const hasEmailDomain = user.email && (user.email.includes('@gmail.com') || user.email.includes('@'));
+    const isLikelyPastDue = backendFlags?.subscriptionType === 'free' && 
+                           backendFlags?.subscriptionStatus === 'trial' && 
+                           user.paid === false && 
+                           hasEmailDomain && 
+                           user.installedAt; // User has been around for a while
+    
+    const shouldShowRenew = isLikelyPastDue;
+    
+    upgradeHeaderH3.textContent = shouldShowRenew ? 'Payment Past Due - Renew Pro' : 'Trial Active - Upgrade to Pro';
     upgradeCard.classList.add('trial-active');
-    // Keep star icon but change color in CSS
+    // Icon for trial or past due
     upgradeIcon.innerHTML = `
       <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" class="upgrade-icon trial-active">
-        <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+        ${shouldShowRenew ? 
+          '<path d="M1 4v6h6M23 20v-6h-6"/><path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15"/>' :
+          '<path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>'
+        }
       </svg>
     `;
-  } else if (user.paid && user.subscriptionStatus === 'past_due') {
+  } else if (isPastDueUser) {
     // User's payment is past due - show renewal needed
-    upgradeHeader.textContent = 'Payment Past Due - Renew';
+    upgradeHeaderH3.textContent = 'Payment Past Due - Renew Pro';
     upgradeCard.classList.add('trial-active');
     upgradeIcon.innerHTML = `
       <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" class="upgrade-icon trial-active">
@@ -1287,7 +1366,7 @@ function updateUpgradeCardHeader(user) {
     `;
   } else {
     // Default state - user needs to sign in
-    upgradeHeader.textContent = 'Sign In Required';
+    upgradeHeaderH3.textContent = 'Sign In Required';
     // User/account icon for sign in
     upgradeIcon.innerHTML = `
       <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" class="upgrade-icon">
@@ -1344,12 +1423,13 @@ function updateUpgradeCardFeatures(user) {
   const featureItems = document.querySelectorAll('.upgrade-features .feature-item span');
   if (featureItems.length < 3) return;
   
-  // Check if subscription is active - only past_due loses access, canceled keeps access until term ends
-  const isSubscriptionActive = user.paid && 
-    (!user.subscriptionStatus || user.subscriptionStatus !== 'past_due');
+  // Check subscription status using backend flags if available, otherwise fallback to ExtPay status
+  const backendFlags = window.backendSubscriptionFlags;
+  const isPastDueUser = backendFlags?.isPastDue || (user.paid && user.subscriptionStatus === 'past_due');
+  const isSubscriptionActive = user.paid && !isPastDueUser;
   
   if (isSubscriptionActive) {
-    // Pro mode (including canceled but still active) - show pro features
+    // Pro mode (including cancelled but still active) - show pro features
     featureItems[0].textContent = '1,000 Guesses each month';
     featureItems[1].textContent = 'High Accuracy Location Analysis';
     featureItems[2].textContent = 'Undetectable';
@@ -1363,7 +1443,16 @@ function updateUpgradeCardFeatures(user) {
 
 function checkCancelledSubscriptionWarning(user) {
   // Only show warning for paid users with canceled status (still active until term ends)
-  if (user.paid && user.subscriptionStatus === 'canceled') {
+  const backendFlags = window.backendSubscriptionFlags;
+  const isCancelledUser = backendFlags?.isCancelled || (user.paid && user.subscriptionStatus === 'canceled');
+  const isPastDueUser = backendFlags?.isPastDue || (user.paid && user.subscriptionStatus === 'past_due');
+  
+  console.log('Checking cancellation warning:', { isCancelledUser, isPastDueUser, backendFlags, userPaid: user.paid, userStatus: user.subscriptionStatus });
+  
+  // Only show cancellation warning for truly cancelled users (not past due masquerading as cancelled)
+  const shouldShowCancelledWarning = false; // Temporarily disable for cleaner UI
+  
+  if (shouldShowCancelledWarning) {
     // Check if we should show the warning (don't show it every time)
     const warningKey = `cancelled_warning_${user.email || user.userId}`;
     chrome.storage.local.get([warningKey], (result) => {
@@ -1409,8 +1498,8 @@ function showCancelledSubscriptionWarning(user) {
         <p>Your Pro subscription will expire on <strong>${dateText}</strong>. You can reactivate anytime to continue after expiration.</p>
       </div>
       <div class="warning-actions">
-        <button class="reactivate-btn" onclick="extpay.openPaymentPage()">Reactivate</button>
-        <button class="dismiss-btn" onclick="removeCancelledSubscriptionWarning()">Dismiss</button>
+        <button class="reactivate-btn" id="reactivate-subscription-btn">Reactivate</button>
+        <button class="dismiss-btn" id="dismiss-warning-btn">Dismiss</button>
       </div>
     </div>
   `;
@@ -1419,6 +1508,22 @@ function showCancelledSubscriptionWarning(user) {
   const settingsPage = document.getElementById('settings-page');
   if (settingsPage) {
     settingsPage.insertBefore(warning, settingsPage.firstChild);
+  }
+  
+  // Add event listeners for the buttons
+  const reactivateBtn = document.getElementById('reactivate-subscription-btn');
+  const dismissBtn = document.getElementById('dismiss-warning-btn');
+  
+  if (reactivateBtn) {
+    reactivateBtn.addEventListener('click', () => {
+      extpay.openPaymentPage();
+    });
+  }
+  
+  if (dismissBtn) {
+    dismissBtn.addEventListener('click', () => {
+      removeCancelledSubscriptionWarning();
+    });
   }
 }
 

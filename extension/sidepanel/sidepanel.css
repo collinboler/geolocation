@@ -808,6 +808,30 @@ input:checked + .slider:before {
     text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
+/* Pro mode activated header styling */
+.upgrade-header.pro-active {
+    justify-content: flex-start;
+    gap: 0;
+}
+
+.upgrade-header.pro-active h3 {
+    color: #4ade80 !important;
+    background: linear-gradient(135deg, #4ade80, #22d3ee) !important;
+    background-clip: text !important;
+    -webkit-background-clip: text !important;
+    -webkit-text-fill-color: transparent !important;
+    text-shadow: 0 2px 4px rgba(74, 222, 128, 0.3);
+}
+
+/* Additional specificity for pro mode */
+.upgrade-card.pro-active .upgrade-header.pro-active h3 {
+    color: #4ade80 !important;
+    background: linear-gradient(135deg, #4ade80, #22d3ee) !important;
+    background-clip: text !important;
+    -webkit-background-clip: text !important;
+    -webkit-text-fill-color: transparent !important;
+}
+
 .upgrade-features {
     margin-bottom: 24px;
 }
@@ -882,15 +906,15 @@ input:checked + .slider:before {
 }
 
 .payment-button.premium-active {
-    background: linear-gradient(135deg, #28a745, #34ce57);
+    background: linear-gradient(135deg, #4ade80, #22d3ee);
     color: white;
-    cursor: default;
+    cursor: pointer;
 }
 
 .payment-button.premium-active:hover {
-    background: linear-gradient(135deg, #28a745, #34ce57);
-    box-shadow: 0 4px 12px rgba(40, 167, 69, 0.3);
-    transform: none;
+    background: linear-gradient(135deg, #22d3ee, #4ade80);
+    box-shadow: 0 4px 12px rgba(74, 222, 128, 0.4);
+    transform: translateY(-1px);
 }
 
 .payment-button:disabled {
@@ -907,7 +931,7 @@ body.dark-mode .payment-button:hover {
 }
 
 body.dark-mode .payment-button.premium-active:hover {
-    box-shadow: 0 4px 12px rgba(40, 167, 69, 0.2);
+    box-shadow: 0 4px 12px rgba(74, 222, 128, 0.3);
 }
 
 /* Dark mode upgrade card styles */
@@ -922,6 +946,24 @@ body.dark-mode .upgrade-header h3 {
     background-clip: text;
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
+}
+
+body.dark-mode .upgrade-header.pro-active h3 {
+    color: #4ade80 !important;
+    background: linear-gradient(135deg, #4ade80, #22d3ee) !important;
+    background-clip: text !important;
+    -webkit-background-clip: text !important;
+    -webkit-text-fill-color: transparent !important;
+    text-shadow: 0 2px 4px rgba(74, 222, 128, 0.4);
+}
+
+/* Additional dark mode specificity */
+body.dark-mode .upgrade-card.pro-active .upgrade-header.pro-active h3 {
+    color: #4ade80 !important;
+    background: linear-gradient(135deg, #4ade80, #22d3ee) !important;
+    background-clip: text !important;
+    -webkit-background-clip: text !important;
+    -webkit-text-fill-color: transparent !important;
 }
 
 body.dark-mode .feature-item span {
@@ -1904,20 +1946,15 @@ body.dark-mode .login-settings-button:hover {
     box-shadow: 0 6px 15px rgba(124, 58, 237, 0.3);
 }
 
-/* Subscription Warning Styles */
+/* Cancelled Subscription Warning */
 .subscription-warning {
-    margin: 16px 0;
-    padding: 16px;
+    background: linear-gradient(135deg, #ef4444, #dc2626);
     border-radius: 12px;
-    border-left: 4px solid #f59e0b;
-    background: linear-gradient(135deg, #fef3c7, #fde68a);
-    box-shadow: 0 4px 12px rgba(245, 158, 11, 0.2);
-}
-
-.cancelled-warning {
-    border-left-color: #ef4444;
-    background: linear-gradient(135deg, #fecaca, #f87171);
-    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.2);
+    padding: 16px;
+    margin: 16px 0;
+    color: white;
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .warning-content {
@@ -1928,8 +1965,11 @@ body.dark-mode .login-settings-button:hover {
 
 .warning-icon {
     flex-shrink: 0;
-    color: #dc2626;
     margin-top: 2px;
+}
+
+.warning-icon svg {
+    color: #fbbf24;
 }
 
 .warning-text {
@@ -1938,14 +1978,12 @@ body.dark-mode .login-settings-button:hover {
 
 .warning-text h4 {
     margin: 0 0 8px 0;
-    color: #7c2d12;
     font-size: 16px;
     font-weight: 600;
 }
 
 .warning-text p {
     margin: 0;
-    color: #a16207;
     font-size: 14px;
     line-height: 1.4;
 }
@@ -1954,77 +1992,40 @@ body.dark-mode .login-settings-button:hover {
     display: flex;
     gap: 8px;
     margin-top: 12px;
-    flex-shrink: 0;
 }
 
 .reactivate-btn, .dismiss-btn {
     padding: 8px 16px;
     border: none;
-    border-radius: 8px;
+    border-radius: 6px;
     font-size: 14px;
-    font-weight: 600;
+    font-weight: 500;
     cursor: pointer;
     transition: all 0.2s ease;
 }
 
 .reactivate-btn {
-    background: #dc2626;
-    color: white;
+    background: white;
+    color: #dc2626;
 }
 
 .reactivate-btn:hover {
-    background: #b91c1c;
+    background: #f3f4f6;
+    transform: translateY(-1px);
 }
 
 .dismiss-btn {
-    background: rgba(255, 255, 255, 0.5);
-    color: #7c2d12;
-    border: 1px solid rgba(124, 45, 18, 0.2);
+    background: rgba(255, 255, 255, 0.2);
+    color: white;
+    border: 1px solid rgba(255, 255, 255, 0.3);
 }
 
 .dismiss-btn:hover {
-    background: rgba(255, 255, 255, 0.8);
+    background: rgba(255, 255, 255, 0.3);
+    transform: translateY(-1px);
 }
 
-/* Dark mode styles */
+/* Dark mode adjustments */
 body.dark-mode .subscription-warning {
-    background: linear-gradient(135deg, #78350f, #92400e);
-    border-left-color: #f59e0b;
-    box-shadow: 0 4px 12px rgba(245, 158, 11, 0.1);
-}
-
-body.dark-mode .cancelled-warning {
-    background: linear-gradient(135deg, #7f1d1d, #991b1b);
-    border-left-color: #ef4444;
-    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.1);
-}
-
-body.dark-mode .warning-text h4 {
-    color: #fbbf24;
-}
-
-body.dark-mode .warning-text p {
-    color: #d97706;
-}
-
-body.dark-mode .warning-icon {
-    color: #fbbf24;
-}
-
-body.dark-mode .reactivate-btn {
-    background: #ef4444;
-}
-
-body.dark-mode .reactivate-btn:hover {
-    background: #dc2626;
-}
-
-body.dark-mode .dismiss-btn {
-    background: rgba(0, 0, 0, 0.3);
-    color: #fbbf24;
-    border-color: rgba(251, 191, 36, 0.2);
-}
-
-body.dark-mode .dismiss-btn:hover {
-    background: rgba(0, 0, 0, 0.5);
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.2);
 } 

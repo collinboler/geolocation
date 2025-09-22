@@ -66,7 +66,7 @@ exports.createUser = onCall(async (request) => {
  * Update user subscription status (called via ExtPay webhooks)
  */
 exports.updateSubscription = onCall(async (request) => {
-  const {extpayUserId, subscriptionStatus, subscriptionType} = request.data;
+  const {extpayUserId, subscriptionStatus, subscriptionType, isCancelled, isPastDue} = request.data;
 
   if (!extpayUserId) {
     throw new HttpsError("invalid-argument", "ExtPay User ID is required");
@@ -77,12 +77,29 @@ exports.updateSubscription = onCall(async (request) => {
     const userDoc = await userRef.get();
     const userData = userDoc.data();
     
+    console.log(`UpdateSubscription for ${extpayUserId}:`, {
+      subscriptionStatus,
+      subscriptionType,
+      isCancelled,
+      isPastDue,
+      existingData: userData
+    });
+    
     const updates = {
       updatedAt: new Date(),
     };
 
     if (subscriptionStatus) {
       updates.subscriptionStatus = subscriptionStatus;
+    }
+
+    // Add subscription status flags
+    if (typeof isCancelled !== 'undefined') {
+      updates.isCancelled = isCancelled;
+    }
+
+    if (typeof isPastDue !== 'undefined') {
+      updates.isPastDue = isPastDue;
     }
 
     if (subscriptionType) {
@@ -103,6 +120,7 @@ exports.updateSubscription = onCall(async (request) => {
     }
 
     await userRef.update(updates);
+    console.log(`UpdateSubscription completed for ${extpayUserId}:`, updates);
     return {success: true};
   } catch (error) {
     console.error("Error updating subscription:", error);
@@ -226,12 +244,22 @@ exports.getUserUsage = onCall(async (request) => {
     const subscriptionType = userData.subscriptionType || "free";
     const limit = USAGE_LIMITS[subscriptionType]?.limit || 3;
 
+    console.log(`GetUserUsage for ${extpayUserId}:`, {
+      storedSubscriptionType: userData.subscriptionType,
+      storedSubscriptionStatus: userData.subscriptionStatus,
+      storedIsCancelled: userData.isCancelled,
+      storedIsPastDue: userData.isPastDue,
+      calculatedLimit: limit
+    });
+
     return {
       current: userData.usage?.current || 0,
       limit,
       resetDate: userData.usage?.resetDate,
       subscriptionType,
       subscriptionStatus: userData.subscriptionStatus,
+      isCancelled: userData.isCancelled || false,
+      isPastDue: userData.isPastDue || false,
     };
   } catch (error) {
     console.error("Error getting user usage:", error);
@@ -454,7 +482,7 @@ Even if you're not 100% certain, make your best educated guess based on the visu
       console.error("Empty response from OpenAI, using fallback. Response text:", responseText);
       return {
         coordinates: { lat: 0, lng: 0 },
-        location: "Unknown - Empty OpenAI response",
+        location: "Technical Error - Please Try Again",
         tokensUsed: totalTokens,
         cost: totalCost,
         rawResponse: "Empty response"
