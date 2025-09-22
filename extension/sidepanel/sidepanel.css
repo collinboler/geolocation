@@ -1902,4 +1902,129 @@ body.dark-mode .login-settings-button {
 
 body.dark-mode .login-settings-button:hover {
     box-shadow: 0 6px 15px rgba(124, 58, 237, 0.3);
+}
+
+/* Subscription Warning Styles */
+.subscription-warning {
+    margin: 16px 0;
+    padding: 16px;
+    border-radius: 12px;
+    border-left: 4px solid #f59e0b;
+    background: linear-gradient(135deg, #fef3c7, #fde68a);
+    box-shadow: 0 4px 12px rgba(245, 158, 11, 0.2);
+}
+
+.cancelled-warning {
+    border-left-color: #ef4444;
+    background: linear-gradient(135deg, #fecaca, #f87171);
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.2);
+}
+
+.warning-content {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+}
+
+.warning-icon {
+    flex-shrink: 0;
+    color: #dc2626;
+    margin-top: 2px;
+}
+
+.warning-text {
+    flex: 1;
+}
+
+.warning-text h4 {
+    margin: 0 0 8px 0;
+    color: #7c2d12;
+    font-size: 16px;
+    font-weight: 600;
+}
+
+.warning-text p {
+    margin: 0;
+    color: #a16207;
+    font-size: 14px;
+    line-height: 1.4;
+}
+
+.warning-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 12px;
+    flex-shrink: 0;
+}
+
+.reactivate-btn, .dismiss-btn {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.reactivate-btn {
+    background: #dc2626;
+    color: white;
+}
+
+.reactivate-btn:hover {
+    background: #b91c1c;
+}
+
+.dismiss-btn {
+    background: rgba(255, 255, 255, 0.5);
+    color: #7c2d12;
+    border: 1px solid rgba(124, 45, 18, 0.2);
+}
+
+.dismiss-btn:hover {
+    background: rgba(255, 255, 255, 0.8);
+}
+
+/* Dark mode styles */
+body.dark-mode .subscription-warning {
+    background: linear-gradient(135deg, #78350f, #92400e);
+    border-left-color: #f59e0b;
+    box-shadow: 0 4px 12px rgba(245, 158, 11, 0.1);
+}
+
+body.dark-mode .cancelled-warning {
+    background: linear-gradient(135deg, #7f1d1d, #991b1b);
+    border-left-color: #ef4444;
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.1);
+}
+
+body.dark-mode .warning-text h4 {
+    color: #fbbf24;
+}
+
+body.dark-mode .warning-text p {
+    color: #d97706;
+}
+
+body.dark-mode .warning-icon {
+    color: #fbbf24;
+}
+
+body.dark-mode .reactivate-btn {
+    background: #ef4444;
+}
+
+body.dark-mode .reactivate-btn:hover {
+    background: #dc2626;
+}
+
+body.dark-mode .dismiss-btn {
+    background: rgba(0, 0, 0, 0.3);
+    color: #fbbf24;
+    border-color: rgba(251, 191, 36, 0.2);
+}
+
+body.dark-mode .dismiss-btn:hover {
+    background: rgba(0, 0, 0, 0.5);
 } 

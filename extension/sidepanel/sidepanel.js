@@ -890,6 +890,7 @@ async function updateUsageDisplay(usage) {
   // Check if user is authenticated (has trial or paid subscription)
   try {
     const user = await extpay.getUser();
+    // Check if user is authenticated (includes past_due and canceled users)
     const isAuthenticated = user.paid || user.trialStartedAt;
     
     // Find existing usage section
@@ -1000,11 +1001,18 @@ async function syncSubscriptionToFirebase(user) {
     let subscriptionType = 'free';
     let subscriptionStatus = 'inactive';
     
-    if (user.paid) {
-      // Determine subscription type based on plan details
-      // For now, we'll default to 'pro' for paid users
+    // Check if subscription is active - only past_due loses access, canceled keeps access until term ends
+    const isSubscriptionActive = user.paid && 
+      (!user.subscriptionStatus || user.subscriptionStatus !== 'past_due');
+    
+    if (isSubscriptionActive) {
+      // User has active paid subscription (including canceled but still active)
       subscriptionType = 'pro';
-      subscriptionStatus = 'active';
+      subscriptionStatus = user.subscriptionStatus || 'active';
+    } else if (user.paid && user.subscriptionStatus === 'past_due') {
+      // User had paid subscription but payment is past due - treat as free
+      subscriptionType = 'free';
+      subscriptionStatus = 'past_due';
     } else if (user.trialStartedAt && !user.trialEnded) {
       subscriptionType = 'free';
       subscriptionStatus = 'trial';
@@ -1072,7 +1080,11 @@ async function initializePaymentStatus() {
       }
     });
     
-    return user.paid || user.trialStartedAt;
+    // Check if user has active subscription or trial
+    const isSubscriptionActive = user.paid && 
+      (!user.subscriptionStatus || 
+       (user.subscriptionStatus !== 'past_due' && user.subscriptionStatus !== 'canceled'));
+    return isSubscriptionActive || user.trialStartedAt;
   } catch (error) {
     console.error('Error checking payment status:', error);
     updatePaymentUI({ paid: false, trialStarted: false });
@@ -1084,7 +1096,11 @@ async function checkPaymentStatus() {
   try {
     const user = await extpay.getUser();
     updatePaymentUI(user);
-    return user.paid || user.trialStartedAt;
+    // Check if user has active subscription or trial
+    const isSubscriptionActive = user.paid && 
+      (!user.subscriptionStatus || 
+       (user.subscriptionStatus !== 'past_due' && user.subscriptionStatus !== 'canceled'));
+    return isSubscriptionActive || user.trialStartedAt;
   } catch (error) {
     console.error('Error checking payment status:', error);
     updatePaymentUI({ paid: false, trialStarted: false });
@@ -1113,8 +1129,15 @@ function updatePaymentUI(user) {
   // Update upgrade card features based on user status
   updateUpgradeCardFeatures(user);
   
-  if (user.paid) {
-    // User has paid subscription - make button clickable to manage plan
+  // Check for cancelled subscription warning
+  checkCancelledSubscriptionWarning(user);
+  
+  // Check if subscription is active - only past_due loses access, canceled keeps access until term ends
+  const isSubscriptionActive = user.paid && 
+    (!user.subscriptionStatus || user.subscriptionStatus !== 'past_due');
+
+  if (isSubscriptionActive) {
+    // User has active paid subscription (including canceled but still active) - make button clickable to manage plan
     paymentButton.innerHTML = `
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <circle cx="12" cy="12" r="3"/>
@@ -1145,8 +1168,25 @@ function updatePaymentUI(user) {
     // Don't show sign-in button for users who already have trial
     signInButton.style.display = 'none';
     
+  } else if (user.paid && user.subscriptionStatus === 'past_due') {
+    // User's payment is past due - treat as trial user with "Renew Subscription" button
+    paymentButton.innerHTML = `
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M1 4v6h6M23 20v-6h-6"/>
+        <path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15"/>
+      </svg>
+      Renew Subscription
+    `;
+    paymentButton.classList.remove('premium-active');
+    paymentButton.classList.add('trial-active');
+    paymentButton.disabled = false;
+    paymentButton.style.display = 'flex';
+    
+    // Don't show sign-in button for authenticated users
+    signInButton.style.display = 'none';
+    
   } else {
-    // User is not signed in or doesn't have trial - show auth buttons
+    // User is not signed in - show auth buttons
     paymentButton.style.display = 'none';
     signInButton.style.display = 'none';
     if (authButtonsContainer) {
@@ -1160,21 +1200,37 @@ async function checkPremiumAccess() {
     const user = await extpay.getUser();
     console.log('ExtPay user status:', user);
     
-    // Check if user has paid subscription OR active trial
-    const isPaid = user.paid;
+    // Check subscription status - only past_due loses access, canceled keeps access until term ends
+    const isSubscriptionActive = user.paid && 
+      (!user.subscriptionStatus || user.subscriptionStatus !== 'past_due');
+    
     const hasActiveTrial = user.trialStartedAt && !user.paid; // Trial active if trialStartedAt exists and not paid
-    const hasAccess = isPaid || hasActiveTrial;
+    const hasAccess = isSubscriptionActive || hasActiveTrial;
     
     console.log('Premium access check:', { 
-      isPaid, 
+      isPaid: user.paid,
+      subscriptionStatus: user.subscriptionStatus,
+      isSubscriptionActive, 
       hasActiveTrial, 
       hasAccess,
-      paid: user.paid, 
       trialStartedAt: user.trialStartedAt 
     });
     
     if (!hasAccess) {
-      showStatus('This feature requires premium access. Please upgrade or start a free trial.');
+      // Check if user is authenticated but just not premium
+      if (user.paid || user.trialStartedAt) {
+        // User is authenticated but doesn't have premium access (past_due, canceled, or free trial limit reached)
+        if (user.subscriptionStatus === 'past_due') {
+          showStatus('Your subscription is past due. Please update your payment method to continue using premium features.');
+        } else if (user.subscriptionStatus === 'canceled') {
+          showStatus('Your subscription has been cancelled. Please reactivate to continue using premium features.');
+        } else {
+          showStatus('This feature requires premium access. Please upgrade or start a free trial.');
+        }
+      } else {
+        // User is not authenticated at all
+        showStatus('This feature requires premium access. Please upgrade or start a free trial.');
+      }
       return false;
     }
     return true;
@@ -1195,8 +1251,12 @@ function updateUpgradeCardHeader(user) {
   // Reset classes
   upgradeCard.classList.remove('pro-active', 'trial-active');
   
-  if (user.paid) {
-    // User has pro - show "Pro Mode Activated"
+  // Check if subscription is active - only past_due loses access, canceled keeps access until term ends
+  const isSubscriptionActive = user.paid && 
+    (!user.subscriptionStatus || user.subscriptionStatus !== 'past_due');
+
+  if (isSubscriptionActive) {
+    // User has active pro subscription (including canceled but still active) - show "Pro Mode Activated"
     upgradeHeader.textContent = 'Pro Mode Activated';
     upgradeCard.classList.add('pro-active');
     // Change icon to a checkmark
@@ -1213,6 +1273,16 @@ function updateUpgradeCardHeader(user) {
     upgradeIcon.innerHTML = `
       <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" class="upgrade-icon trial-active">
         <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+      </svg>
+    `;
+  } else if (user.paid && user.subscriptionStatus === 'past_due') {
+    // User's payment is past due - show renewal needed
+    upgradeHeader.textContent = 'Payment Past Due - Renew';
+    upgradeCard.classList.add('trial-active');
+    upgradeIcon.innerHTML = `
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" class="upgrade-icon trial-active">
+        <path d="M1 4v6h6M23 20v-6h-6"/>
+        <path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15"/>
       </svg>
     `;
   } else {
@@ -1274,8 +1344,12 @@ function updateUpgradeCardFeatures(user) {
   const featureItems = document.querySelectorAll('.upgrade-features .feature-item span');
   if (featureItems.length < 3) return;
   
-  if (user.paid) {
-    // Pro mode - show pro features
+  // Check if subscription is active - only past_due loses access, canceled keeps access until term ends
+  const isSubscriptionActive = user.paid && 
+    (!user.subscriptionStatus || user.subscriptionStatus !== 'past_due');
+  
+  if (isSubscriptionActive) {
+    // Pro mode (including canceled but still active) - show pro features
     featureItems[0].textContent = '1,000 Guesses each month';
     featureItems[1].textContent = 'High Accuracy Location Analysis';
     featureItems[2].textContent = 'Undetectable';
@@ -1286,6 +1360,77 @@ function updateUpgradeCardFeatures(user) {
     featureItems[2].textContent = 'Undetectable';
   }
 }
+
+function checkCancelledSubscriptionWarning(user) {
+  // Only show warning for paid users with canceled status (still active until term ends)
+  if (user.paid && user.subscriptionStatus === 'canceled') {
+    // Check if we should show the warning (don't show it every time)
+    const warningKey = `cancelled_warning_${user.email || user.userId}`;
+    chrome.storage.local.get([warningKey], (result) => {
+      const lastShown = result[warningKey];
+      const now = Date.now();
+      const oneHour = 60 * 60 * 1000; // 1 hour in milliseconds
+      
+      // Show warning if never shown or if shown more than 1 hour ago
+      if (!lastShown || (now - lastShown) > oneHour) {
+        showCancelledSubscriptionWarning(user);
+        // Store when we showed the warning
+        chrome.storage.local.set({ [warningKey]: now });
+      }
+    });
+  } else {
+    // Remove any existing warning if user is not in cancelled state
+    removeCancelledSubscriptionWarning();
+  }
+}
+
+function showCancelledSubscriptionWarning(user) {
+  // Remove any existing warning first
+  removeCancelledSubscriptionWarning();
+  
+  // Create the warning element
+  const warning = document.createElement('div');
+  warning.id = 'cancelled-subscription-warning';
+  warning.className = 'subscription-warning cancelled-warning';
+  
+  // Get expiration date (this would come from ExtPay user object)
+  const expirationDate = user.subscriptionEndDate || user.expirationDate;
+  const dateText = expirationDate ? new Date(expirationDate).toLocaleDateString() : 'your next billing date';
+  
+  warning.innerHTML = `
+    <div class="warning-content">
+      <div class="warning-icon">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+        </svg>
+      </div>
+      <div class="warning-text">
+        <h4>Subscription Cancelled</h4>
+        <p>Your Pro subscription will expire on <strong>${dateText}</strong>. You can reactivate anytime to continue after expiration.</p>
+      </div>
+      <div class="warning-actions">
+        <button class="reactivate-btn" onclick="extpay.openPaymentPage()">Reactivate</button>
+        <button class="dismiss-btn" onclick="removeCancelledSubscriptionWarning()">Dismiss</button>
+      </div>
+    </div>
+  `;
+  
+  // Insert the warning at the top of the settings page
+  const settingsPage = document.getElementById('settings-page');
+  if (settingsPage) {
+    settingsPage.insertBefore(warning, settingsPage.firstChild);
+  }
+}
+
+function removeCancelledSubscriptionWarning() {
+  const warning = document.getElementById('cancelled-subscription-warning');
+  if (warning) {
+    warning.remove();
+  }
+}
+
+// Make function globally available for onclick handlers
+window.removeCancelledSubscriptionWarning = removeCancelledSubscriptionWarning;
 
 // Comprehensive ExtPay.js Edge Case Handler
 async function handleExtPayEdgeCases() {
@@ -1318,7 +1463,19 @@ async function handleExtPayEdgeCases() {
       return user;
     }
     
-    // Edge Case 5: Subscription cancelled but still within period
+    // Edge Case 5: Subscription past due
+    if (user.paid && user.subscriptionStatus === 'past_due') {
+      showSubscriptionPastDueMessage();
+      return user;
+    }
+
+    // Edge Case 6: Subscription cancelled
+    if (user.paid && user.subscriptionStatus === 'canceled') {
+      showSubscriptionCancelledMessage();
+      return user;
+    }
+
+    // Edge Case 7: Subscription cancelled but still within period (legacy check)
     if (user.paid && user.subscriptionCancelled) {
       showSubscriptionCancelledMessage(user.subscriptionEndDate);
       return user;
@@ -1374,7 +1531,11 @@ async function initializePaymentStatusWithEdgeCases() {
     }
   });
   
-  return user.paid || (user.trialStartedAt && !user.trialEnded);
+  // Check if user has active subscription or trial
+  const isSubscriptionActive = user.paid && 
+    (!user.subscriptionStatus || 
+     (user.subscriptionStatus !== 'past_due' && user.subscriptionStatus !== 'canceled'));
+  return isSubscriptionActive || (user.trialStartedAt && !user.trialEnded);
 }
 
 // Edge case notification functions
@@ -1394,6 +1555,16 @@ function showPaymentFailedMessage() {
     message: 'Your payment could not be processed. Please try again.',
     type: 'error',
     action: 'Retry Payment',
+    callback: () => extpay.openPaymentPage()
+  });
+}
+
+function showSubscriptionPastDueMessage() {
+  showNotification('subscription-past-due', {
+    title: 'Payment Past Due',
+    message: 'Your subscription payment is past due. Please update your payment method to continue enjoying premium features.',
+    type: 'warning',
+    action: 'Update Payment',
     callback: () => extpay.openPaymentPage()
   });
 }
