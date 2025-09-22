@@ -859,7 +859,7 @@ async function processImage(dataUrl) {
           buttonText.style.display = 'inline';
           loadingSpinner.style.display = 'none';
           
-          showUsageLimitExceededModal(errorData);
+          await showUsageLimitExceededModal(errorData);
           return;
         }
         
@@ -1678,7 +1678,7 @@ function removeCancelledSubscriptionWarning() {
   }
 }
 
-function showUsageLimitExceededModal(errorData) {
+async function showUsageLimitExceededModal(errorData) {
   console.log('showUsageLimitExceededModal called with:', errorData);
   
   // Remove any existing modal first
@@ -1686,6 +1686,38 @@ function showUsageLimitExceededModal(errorData) {
   if (existingModal) {
     console.log('Removing existing modal');
     existingModal.remove();
+  }
+
+  // Get current user info to determine subscription type
+  let user;
+  try {
+    user = await extpay.getUser();
+  } catch (error) {
+    console.error('Error getting user for usage modal:', error);
+    user = { paid: false, trialStartedAt: null };
+  }
+
+  // Determine subscription type and limits
+  const backendFlags = window.backendSubscriptionFlags;
+  const isPastDueUser = backendFlags?.isPastDue || (user.paid && user.subscriptionStatus === 'past_due');
+  const isSubscriptionActive = user.paid && !isPastDueUser;
+  const isTrialUser = user.trialStartedAt && !user.paid;
+  
+  // Set modal content based on subscription type
+  let modalTitle, limitText, resetPeriod, showUpgradeButton;
+  
+  if (isSubscriptionActive) {
+    // Pro user
+    modalTitle = "Pro Usage Limit Reached";
+    limitText = "1,000 Guesses";
+    resetPeriod = "monthly";
+    showUpgradeButton = false;
+  } else {
+    // Free trial or unauthenticated user
+    modalTitle = "Free Trial Limit Reached";
+    limitText = "3 free guesses";
+    resetPeriod = "weekly";
+    showUpgradeButton = true;
   }
 
   // Create the modal overlay
@@ -1696,7 +1728,7 @@ function showUsageLimitExceededModal(errorData) {
   console.log('Created modal element:', modal);
   
   // Extract reset date - try to get it from the already displayed usage info
-  let resetDate = 'the next billing cycle';
+  let resetDate = `next ${resetPeriod === 'weekly' ? 'week' : 'month'}`;
   
   // First try to get it from the usage display on the page
   const usageResetEl = document.getElementById('usage-reset');
@@ -1704,7 +1736,7 @@ function showUsageLimitExceededModal(errorData) {
     resetDate = usageResetEl.textContent;
   } else {
     // Fallback: try to extract from error message
-    const errorMessage = errorData.error?.message || 'You\'ve reached your monthly limit';
+    const errorMessage = errorData.error?.message || `You've reached your ${resetPeriod} limit`;
     console.log('Error message for date parsing:', errorMessage);
     const resetDateMatch = errorMessage.match(/Resets on (.+?)\./);
     if (resetDateMatch && resetDateMatch[1] !== 'Invalid Date') {
@@ -1712,10 +1744,22 @@ function showUsageLimitExceededModal(errorData) {
     }
   }
   
+  // Generate upgrade button HTML if needed
+  const upgradeButtonHTML = showUpgradeButton ? `
+    <button class="upgrade-modal-btn" id="upgrade-modal-btn">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+        <path d="M2 17l10 5 10-5"/>
+        <path d="M2 12l10 5 10-5"/>
+      </svg>
+      Upgrade to Pro
+    </button>
+  ` : '';
+  
   modal.innerHTML = `
     <div class="modal-content usage-limit-modal-content">
       <div class="modal-header">
-        <h3>Pro Usage Limit Reached</h3>
+        <h3>${modalTitle}</h3>
         <button class="modal-close" id="close-usage-modal">&times;</button>
       </div>
       <div class="modal-body">
@@ -1727,9 +1771,15 @@ function showUsageLimitExceededModal(errorData) {
             </svg>
           </div>
           <h4>Thank you for using GeoGuesser Hacker!</h4>
-          <p>You've reached your monthly limit of <strong>1,000 Guesses</strong>.</p>
+          <p>You've reached your ${resetPeriod} limit of <strong>${limitText}</strong>.</p>
           <p>Your usage will reset on <strong>${resetDate}</strong>.</p>
           
+          ${showUpgradeButton ? `
+          <div class="upgrade-info">
+            <h5>Want unlimited guesses?</h5>
+            <p>Upgrade to Pro for 1,000 guesses per month!</p>
+          </div>
+          ` : `
           <div class="contact-info">
             <p>Need more guesses or have questions? Contact us:</p>
             <a href="mailto:collinboler@princeton.edu" class="contact-email">
@@ -1740,11 +1790,13 @@ function showUsageLimitExceededModal(errorData) {
               collinboler@princeton.edu
             </a>
           </div>
+          `}
         </div>
         
         <div class="usage-limit-actions">
+          ${upgradeButtonHTML}
           <button class="close-modal-btn" id="close-usage-limit-btn">
-            Got it!
+            ${showUpgradeButton ? 'Maybe Later' : 'Got it!'}
           </button>
         </div>
       </div>
@@ -1763,6 +1815,19 @@ function showUsageLimitExceededModal(errorData) {
       modal.remove();
     });
   });
+  
+  // Add upgrade button event listener if present
+  const upgradeBtn = modal.querySelector('#upgrade-modal-btn');
+  if (upgradeBtn) {
+    upgradeBtn.addEventListener('click', () => {
+      console.log('🔄 Upgrade button clicked from usage limit modal');
+      modal.remove();
+      // Start monitoring for ExtPay window
+      startExtPayWindowMonitoring();
+      // Open ExtPay payment page
+      extpay.openPaymentPage();
+    });
+  }
   
   // Close on overlay click
   modal.addEventListener('click', (e) => {

@@ -2227,6 +2227,85 @@ body.dark-mode .modal-close:hover {
     transform: translateY(-1px);
 }
 
+/* Upgrade button in usage limit modal */
+.upgrade-modal-btn {
+    background: linear-gradient(135deg, #4f46e5, #7c3aed);
+    color: white;
+    border: none;
+    padding: 12px 24px;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-right: 12px;
+}
+
+.upgrade-modal-btn:hover {
+    background: linear-gradient(135deg, #7c3aed, #8b5cf6);
+    box-shadow: 0 6px 15px rgba(124, 58, 237, 0.4);
+    transform: translateY(-1px);
+}
+
+/* Upgrade info section in modal */
+.upgrade-info {
+    background: #f0f7ff;
+    border-radius: 12px;
+    padding: 20px;
+    margin: 20px 0;
+    border: 1px solid #e0e7ff;
+    text-align: center;
+}
+
+.upgrade-info h5 {
+    margin: 0 0 8px 0;
+    font-size: 18px;
+    font-weight: 600;
+    color: #4f46e5;
+}
+
+.upgrade-info p {
+    margin: 0;
+    font-size: 14px;
+    color: #6b7280;
+}
+
+/* Modal actions layout for multiple buttons */
+.usage-limit-actions {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 12px;
+    padding-top: 20px;
+    flex-wrap: wrap;
+}
+
+/* Dark mode styles for new elements */
+body.dark-mode .upgrade-info {
+    background: #1e1b4b;
+    border-color: #3730a3;
+}
+
+body.dark-mode .upgrade-info h5 {
+    color: #a5b4fc;
+}
+
+body.dark-mode .upgrade-info p {
+    color: #9ca3af;
+}
+
+body.dark-mode .upgrade-modal-btn {
+    box-shadow: 0 4px 12px rgba(79, 70, 229, 0.2);
+}
+
+body.dark-mode .upgrade-modal-btn:hover {
+    box-shadow: 0 6px 15px rgba(124, 58, 237, 0.3);
+}
+
 /* Dark mode styles for usage limit modal */
 body.dark-mode .usage-limit-info h4 {
     color: #e2e8f0;
