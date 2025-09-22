@@ -3,6 +3,62 @@ let zoomLevel = 9; // Declare at the top level
 // Initialize ExtPay for the sidepanel
 const extpay = ExtPay('geoguesser-hacker');
 
+// ========================================
+// EXTPAY EVENT LISTENERS FOR AUTOMATIC UI UPDATES
+// ========================================
+
+// Automatic refresh when user completes payment
+extpay.onPaid.addListener(async (user) => {
+  console.log('🎉 ExtPay onPaid event fired:', user);
+  try {
+    // Show immediate feedback
+    showStatus('Payment successful! Activating Pro features...');
+    
+    // Sync to Firebase
+    await syncSubscriptionToFirebase(user);
+    
+    // Comprehensive UI refresh
+    await checkPaymentStatus();
+    
+    // Trigger custom event for other listeners
+    window.dispatchEvent(new CustomEvent('extpay-state-changed', { 
+      detail: { action: 'payment-completed', user: user }
+    }));
+    
+    showStatus('Pro features activated! 🚀');
+  } catch (error) {
+    console.error('Error handling onPaid event:', error);
+    showStatus('Payment successful! Please refresh if UI doesn\'t update.');
+  }
+});
+
+// Automatic refresh when user starts trial
+extpay.onTrialStarted.addListener(async (user) => {
+  console.log('🎉 ExtPay onTrialStarted event fired:', user);
+  try {
+    // Show immediate feedback
+    showStatus('Free trial activated! You now have access to free guesses.');
+    
+    // Sync to Firebase
+    await syncSubscriptionToFirebase(user);
+    
+    // Comprehensive UI refresh
+    await checkPaymentStatus();
+    
+    // Trigger custom event for other listeners
+    window.dispatchEvent(new CustomEvent('extpay-state-changed', { 
+      detail: { action: 'trial-started', user: user }
+    }));
+    
+    // Show trial activation message
+    chrome.storage.local.set({ shouldShowTrialMessage: true });
+    showTrialActivatedMessage();
+  } catch (error) {
+    console.error('Error handling onTrialStarted event:', error);
+    showStatus('Trial activated! Please refresh if UI doesn\'t update.');
+  }
+});
+
 /*
 ======================================================================================
 COMPREHENSIVE EXTPAY.JS EDGE CASES & WORKFLOWS
@@ -142,54 +198,158 @@ document.addEventListener('DOMContentLoaded', () => {
     initializeFirebaseUser();
   }
 
-  // Refresh payment status when the window regains focus (user returns from payment page)
-  // But only do this occasionally to avoid excessive API calls
+  // Enhanced state management system
   let lastFocusRefresh = 0;
-  window.addEventListener('focus', async () => {
-    const now = Date.now();
-    // Only refresh if it's been more than 30 seconds since last refresh
-    if (now - lastFocusRefresh < 30000) return;
-    
-    console.log('Window focused, refreshing payment status...');
-    lastFocusRefresh = now;
+  let lastVisibilityRefresh = 0;
+  let isRefreshing = false;
+
+  // Centralized refresh function to prevent race conditions
+  const refreshUIState = async (source = 'unknown') => {
+    if (isRefreshing) {
+      console.log(`🔄 Refresh already in progress, skipping (source: ${source})`);
+      return;
+    }
     
     try {
-      const user = await extpay.getUser();
-      await syncSubscriptionToFirebase(user);
-      await checkPaymentStatus();
+      isRefreshing = true;
+      console.log(`🔄 Refreshing UI state (source: ${source})`);
       
-      // Also refresh usage information
-      const extpayUserId = user.userId || user.email || 'anonymous';
-      loadUsageInformation(extpayUserId);
+      await checkPaymentStatus();
+      console.log(`✅ UI state refresh complete (source: ${source})`);
     } catch (error) {
-      console.error('Error refreshing on focus:', error);
+      console.error(`❌ Error refreshing UI state (source: ${source}):`, error);
+    } finally {
+      isRefreshing = false;
     }
+  };
+
+  // Refresh when window regains focus (user returns from payment/ExtPay pages)
+  window.addEventListener('focus', async () => {
+    const now = Date.now();
+    // Reduce throttle time to 10 seconds for better responsiveness
+    if (now - lastFocusRefresh < 10000) return;
+    
+    lastFocusRefresh = now;
+    await refreshUIState('window-focus');
   });
 
-  // Also refresh when page becomes visible again
-  // But throttle this as well to avoid excessive calls
-  let lastVisibilityRefresh = 0;
+  // Refresh when page becomes visible (tab switching)
   document.addEventListener('visibilitychange', async () => {
     if (!document.hidden) {
       const now = Date.now();
-      // Only refresh if it's been more than 30 seconds since last refresh
-      if (now - lastVisibilityRefresh < 30000) return;
+      // Reduce throttle time to 5 seconds for better responsiveness
+      if (now - lastVisibilityRefresh < 5000) return;
       
-      console.log('Page became visible, refreshing payment status...');
       lastVisibilityRefresh = now;
-      
-      await checkPaymentStatus();
-      
-      // Also refresh usage information
-      try {
-        const user = await extpay.getUser();
-        const extpayUserId = user.userId || user.email || 'anonymous';
-        loadUsageInformation(extpayUserId);
-      } catch (error) {
-        console.error('Error refreshing usage on visibility change:', error);
-      }
+      await refreshUIState('visibility-change');
     }
   });
+
+  // Listen for chrome storage changes (ExtPay updates)
+  if (chrome.storage && chrome.storage.onChanged) {
+    chrome.storage.onChanged.addListener(async (changes, areaName) => {
+      if (areaName === 'local') {
+        // Look for ExtPay-related changes
+        const extpayKeys = Object.keys(changes).filter(key => 
+          key.includes('extpay') || 
+          key.includes('payment') || 
+          key.includes('subscription') ||
+          key.includes('trial') ||
+          key.includes('user')
+        );
+        
+        if (extpayKeys.length > 0) {
+          console.log('🔄 Chrome storage change detected:', extpayKeys);
+          await refreshUIState('storage-change');
+        }
+      }
+    });
+  }
+
+  // Listen for custom events (can be triggered by other parts of the extension)
+  window.addEventListener('extpay-state-changed', async (event) => {
+    console.log('🔄 Custom ExtPay state change event received:', event.detail);
+    await refreshUIState('custom-event');
+  });
+
+  // Listen for ExtPay popup closure (user returning from payment flow)
+  let extpayWindowCheckInterval;
+  const startExtPayWindowMonitoring = () => {
+    console.log('🔄 Starting ExtPay window monitoring...');
+    extpayWindowCheckInterval = setInterval(async () => {
+      // Check if user has returned from ExtPay by testing getUser response time
+      try {
+        const startTime = Date.now();
+        const user = await extpay.getUser();
+        const responseTime = Date.now() - startTime;
+        
+        // If getUser responds quickly and user data has changed, refresh UI
+        if (responseTime < 500) { // Fast response suggests user is back
+          await refreshUIState('extpay-window-return-detected');
+          clearInterval(extpayWindowCheckInterval);
+        }
+      } catch (error) {
+        // If there's an error, user might still be in ExtPay flow
+        console.log('ExtPay getUser error (user might still be in payment flow):', error);
+      }
+    }, 2000); // Check every 2 seconds
+    
+    // Stop monitoring after 10 minutes (payment flows shouldn't take that long)
+    setTimeout(() => {
+      if (extpayWindowCheckInterval) {
+        clearInterval(extpayWindowCheckInterval);
+        console.log('🔄 ExtPay window monitoring timeout - stopping');
+      }
+    }, 600000); // 10 minutes
+  };
+
+  // Start monitoring when user clicks payment buttons
+  window.startExtPayWindowMonitoring = startExtPayWindowMonitoring;
+
+  // Refresh when settings page becomes visible
+  const settingsObserver = new MutationObserver((mutations) => {
+    mutations.forEach((mutation) => {
+      if (mutation.type === 'attributes' && mutation.attributeName === 'style') {
+        if (settingsPage && settingsPage.style.display !== 'none') {
+          console.log('🔄 Settings page became visible');
+          setTimeout(() => refreshUIState('settings-visible'), 100);
+        }
+      }
+    });
+  });
+
+  if (settingsPage) {
+    settingsObserver.observe(settingsPage, { attributes: true });
+  }
+
+  // Enhanced periodic refresh system
+  let periodicCheckCount = 0;
+  
+  // Fast periodic checks for the first 5 minutes (every 10 seconds)
+  // Then slower checks (every 60 seconds) for ongoing monitoring
+  const periodicCheck = async () => {
+    if (!document.hidden && !isRefreshing) {
+      periodicCheckCount++;
+      
+      // Check if this is within the first 5 minutes (30 checks * 10 seconds = 5 minutes)
+      const isEarlyPeriod = periodicCheckCount <= 30;
+      const checkInterval = isEarlyPeriod ? 10000 : 60000; // 10s early, 60s later
+      
+      await refreshUIState(`periodic-check-${isEarlyPeriod ? 'fast' : 'normal'}`);
+      
+      // Schedule next check
+      setTimeout(periodicCheck, checkInterval);
+    } else {
+      // If hidden or refreshing, check again in 30 seconds
+      setTimeout(periodicCheck, 30000);
+    }
+  };
+  
+  // Start the periodic checking
+  setTimeout(periodicCheck, 10000); // First check after 10 seconds
+
+  // Make refresh function globally available for manual testing/debugging
+  window.refreshUIState = refreshUIState;
 
   // Load settings from storage
   chrome.storage.local.get(['zoomLevel'], (result) => {
@@ -274,6 +434,8 @@ document.addEventListener('DOMContentLoaded', () => {
   // Payment button event listener
   paymentButton.addEventListener('click', () => {
     // For all states (Upgrade to Pro, Manage Plan), open ExtPay page
+    console.log('🔄 Payment button clicked - starting window monitoring');
+    startExtPayWindowMonitoring();
     extpay.openPaymentPage();
   });
 
@@ -1747,12 +1909,40 @@ async function handleExtPayEdgeCases() {
   }
 }
 
+// Comprehensive payment/subscription status refresh function
+async function checkPaymentStatus() {
+  try {
+    const user = await extpay.getUser();
+    await syncSubscriptionToFirebase(user);
+    updatePaymentUI(user);
+    updateUpgradeCardHeader(user);
+    updateUpgradeCardFeatures(user);
+    
+    // Load usage information if user is authenticated
+    const extpayUserId = user.userId || user.email;
+    if (extpayUserId && extpayUserId !== 'anonymous') {
+      await loadUsageInformation(extpayUserId);
+    }
+    
+    // Check for cancelled subscription warning
+    checkCancelledSubscriptionWarning(user);
+    
+    return true;
+  } catch (error) {
+    console.error('Error in checkPaymentStatus:', error);
+    return false;
+  }
+}
+
 // Enhanced initialization with edge case handling
 async function initializePaymentStatusWithEdgeCases() {
   const user = await handleExtPayEdgeCases();
   if (!user) return false;
   
+  // Comprehensive UI update
   updatePaymentUI(user);
+  updateUpgradeCardHeader(user);
+  updateUpgradeCardFeatures(user);
   
   // Check if we should show the trial activation message
   chrome.storage.local.get(['shouldShowTrialMessage'], (result) => {
@@ -2117,17 +2307,22 @@ function showSignInPrompt() {
           showStatus(`Successfully ${actionType}! You now have access to free guesses.`);
           // Sync user to Firebase
           await syncSubscriptionToFirebase(user);
-          // Refresh UI
+          // Comprehensive UI refresh
           await checkPaymentStatus();
-          // Load usage info
-          const extpayUserId = user.userId || user.email;
-          await loadUsageInformation(extpayUserId);
+          // Trigger a custom event to notify other parts of the extension
+          window.dispatchEvent(new CustomEvent('extpay-state-changed', { 
+            detail: { action: actionType, user: user }
+          }));
         }
       } catch (error) {
         console.error(`Error after ${actionType}:`, error);
         showStatus(`${actionType} successful! Please try your guess again.`);
+        // Still try to refresh UI even if there was an error
+        if (window.refreshUIState) {
+          await window.refreshUIState('auth-success-fallback');
+        }
       }
-    }, 1000);
+    }, 1500); // Slightly longer delay to ensure ExtPay state is fully updated
   };
   
   // Sign Up button
@@ -2135,6 +2330,10 @@ function showSignInPrompt() {
     try {
       closeModal();
       showStatus('Opening free trial page...');
+      
+      // Start monitoring for ExtPay window closure
+      console.log('🔄 Sign up button clicked - starting window monitoring');
+      startExtPayWindowMonitoring();
       
       // Open ExtPay trial page for new users (free trial sign-up)
       await extpay.openTrialPage();
@@ -2151,6 +2350,10 @@ function showSignInPrompt() {
     try {
       closeModal();
       showStatus('Opening log-in page...');
+      
+      // Start monitoring for ExtPay window closure
+      console.log('🔄 Log in button clicked - starting window monitoring');
+      startExtPayWindowMonitoring();
       
       // Open ExtPay login page for existing users
       await extpay.openLoginPage();
