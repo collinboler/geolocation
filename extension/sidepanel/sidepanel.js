@@ -1283,32 +1283,40 @@ function updatePremiumFeaturesList(user) {
   const premiumFeaturesList = document.querySelector('.premium-features-list');
   if (!premiumFeaturesList) return;
   
+  const checkIcon = `<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="color: #10b981; margin-right: 8px; vertical-align: middle;">
+    <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
+  </svg>`;
+  
+  const starIcon = `<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="color: #fbbf24; margin-right: 8px; vertical-align: middle;">
+    <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+  </svg>`;
+  
   if (user.paid) {
     // User has paid subscription
     premiumFeaturesList.innerHTML = `
-      <p><strong>&#10003; Premium activated!</strong></p>
-      <p>&#10003; Unlimited AI location guessing</p>
-      <p>&#10003; Advanced geolocation analysis</p>
-      <p>&#10003; Priority support</p>
-      <p>&#10003; All premium features unlocked</p>
+      <p><strong>${checkIcon}Premium activated!</strong></p>
+      <p>${checkIcon}Unlimited AI location guessing</p>
+      <p>${checkIcon}Advanced geolocation analysis</p>
+      <p>${checkIcon}Priority support</p>
+      <p>${checkIcon}All premium features unlocked</p>
     `;
   } else if (user.trialStartedAt) {
     // User is on trial
     premiumFeaturesList.innerHTML = `
-      <p><strong>&#9733; Trial active!</strong></p>
-      <p>&#10003; Unlimited AI location guessing</p>
-      <p>&#10003; Advanced geolocation analysis</p>
-      <p>&#10003; Priority support</p>
-      <p>&#10003; All premium features available</p>
+      <p><strong>${starIcon}Trial active!</strong></p>
+      <p>${checkIcon}Unlimited AI location guessing</p>
+      <p>${checkIcon}Advanced geolocation analysis</p>
+      <p>${checkIcon}Priority support</p>
+      <p>${checkIcon}All premium features available</p>
     `;
   } else {
     // User hasn't paid or started trial
     premiumFeaturesList.innerHTML = `
-      <p><strong>&#9733; Free trial available!</strong></p>
-      <p>&#10003; Unlimited AI location guessing</p>
-      <p>&#10003; Advanced geolocation analysis</p>
-      <p>&#10003; Priority support</p>
-      <p>&#10003; Future premium features</p>
+      <p><strong>${starIcon}Free trial available!</strong></p>
+      <p>${checkIcon}Unlimited AI location guessing</p>
+      <p>${checkIcon}Advanced geolocation analysis</p>
+      <p>${checkIcon}Priority support</p>
+      <p>${checkIcon}Future premium features</p>
     `;
   }
 }
@@ -1503,7 +1511,12 @@ function showTrialActivatedMessage() {
         <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
       </svg>
       <div class="trial-notification-text">
-        <strong>★ Free Trial Activated!</strong>
+        <strong>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="color: #fbbf24; margin-right: 6px; vertical-align: middle;">
+            <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+          </svg>
+          Free Trial Activated!
+        </strong>
         <p>Enjoy all premium features during your trial period.</p>
       </div>
       <button class="trial-notification-close" onclick="this.parentElement.parentElement.remove()">×</button>
@@ -1558,20 +1571,41 @@ function showUsageLimitPopup(errorMessage) {
         
         <div class="option-card premium-option">
           <div class="option-header">
-            <span class="option-icon">⚡</span>
+            <span class="option-icon">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
+              </svg>
+            </span>
             <span class="option-title">Upgrade to Premium</span>
           </div>
           <div class="option-benefits">
-            <p>✓ Unlimited AI guesses</p>
-            <p>✓ Advanced analysis</p>
-            <p>✓ Priority support</p>
+            <p><span class="check-icon">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
+              </svg>
+            </span> Unlimited AI guesses</p>
+            <p><span class="check-icon">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
+              </svg>
+            </span> Advanced analysis</p>
+            <p><span class="check-icon">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
+              </svg>
+            </span> Priority support</p>
           </div>
           <button class="upgrade-button" id="upgrade-from-limit">Upgrade Now</button>
         </div>
         
         <div class="option-card wait-option">
           <div class="option-header">
-            <span class="option-icon">⏰</span>
+            <span class="option-icon">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                <circle cx="12" cy="12" r="10"/>
+                <polyline points="12,6 12,12 16,14" stroke="white" stroke-width="2" fill="none"/>
+              </svg>
+            </span>
             <span class="option-title">Wait for Reset</span>
           </div>
           <div class="option-details">

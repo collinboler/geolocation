@@ -7,6 +7,13 @@ body {
     width: 100%;
     min-height: 100vh;
     overflow-x: hidden;
+    /* Hide scrollbar while keeping functionality */
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none; /* IE and Edge */
+}
+
+body::-webkit-scrollbar {
+    display: none; /* Chrome, Safari, Opera */
 }
 
 .sidepanel-container {
@@ -15,6 +22,13 @@ body {
     position: relative;
     overflow-x: hidden;
     min-height: 100vh;
+    /* Hide scrollbar while keeping functionality */
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none; /* IE and Edge */
+}
+
+.sidepanel-container::-webkit-scrollbar {
+    display: none; /* Chrome, Safari, Opera */
 }
 
 /* Page navigation styles */
@@ -1402,6 +1416,19 @@ body.dark-mode .usage-value {
     margin: 4px 0;
     font-size: 14px;
     opacity: 0.9;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.check-icon {
+    display: inline-flex;
+    align-items: center;
+    flex-shrink: 0;
+}
+
+.check-icon svg {
+    color: rgba(255, 255, 255, 0.9);
 }
 
 .upgrade-button {
@@ -1720,4 +1747,8 @@ body.dark-mode .login-button {
 
 body.dark-mode .login-button:hover {
     box-shadow: 0 6px 20px rgba(79, 70, 229, 0.3);
+}
+
+body.dark-mode .check-icon svg {
+    color: rgba(255, 255, 255, 0.8);
 } 
