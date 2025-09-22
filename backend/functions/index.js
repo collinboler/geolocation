@@ -108,11 +108,21 @@ exports.updateSubscription = onCall(async (request) => {
       if (currentSubscriptionType !== subscriptionType) {
         console.log(`Subscription type changed from ${currentSubscriptionType} to ${subscriptionType}, resetting usage`);
         updates.subscriptionType = subscriptionType;
+        
+        // For pro subscriptions, use current date as the subscription start date
+        // For other types, use default calculation
+        const subscriptionStartDate = subscriptionType === 'pro' ? new Date() : null;
+        
         updates.usage = {
           current: 0,
-          resetDate: getNextResetDate(USAGE_LIMITS[subscriptionType]?.period || "month"),
+          resetDate: getNextResetDate(USAGE_LIMITS[subscriptionType]?.period || "month", subscriptionStartDate),
           history: [],
         };
+        
+        // Store subscription start date for pro users for future reset calculations
+        if (subscriptionType === 'pro') {
+          updates.proSubscriptionStartDate = new Date();
+        }
       } else {
         // Just update subscription type without resetting usage
         updates.subscriptionType = subscriptionType;
@@ -150,20 +160,29 @@ exports.processGeolocation = onCall(async (request) => {
     const userData = userDoc.data();
 
     // Check usage limits first (includes free users)
-    const usageCheck = await checkUsageLimit(userData);
+    const usageCheck = await checkUsageLimit(userData, userRef);
+    
+    // If usage was reset, reload user data to get updated counts
+    let currentUserData = userData;
+    if (usageCheck.wasReset) {
+      const updatedUserDoc = await userRef.get();
+      currentUserData = updatedUserDoc.data();
+      console.log(`Usage was reset, reloaded user data. New usage: ${currentUserData.usage?.current || 0}`);
+    }
+    
     if (!usageCheck.allowed) {
       // For free users, provide upgrade options in the error message
-      const subscriptionType = userData.subscriptionType || "free";
+      const subscriptionType = currentUserData.subscriptionType || "free";
       if (subscriptionType === "free") {
         // Handle Firestore timestamp properly
         let resetDate = 'next week';
-        if (userData.usage?.resetDate) {
+        if (currentUserData.usage?.resetDate) {
           try {
             // Check if it's a Firestore timestamp object
-            if (userData.usage.resetDate._seconds) {
-              resetDate = new Date(userData.usage.resetDate._seconds * 1000).toLocaleDateString();
+            if (currentUserData.usage.resetDate._seconds) {
+              resetDate = new Date(currentUserData.usage.resetDate._seconds * 1000).toLocaleDateString();
             } else {
-              resetDate = new Date(userData.usage.resetDate).toLocaleDateString();
+              resetDate = new Date(currentUserData.usage.resetDate).toLocaleDateString();
             }
           } catch (e) {
             console.error('Error parsing reset date:', e);
@@ -171,15 +190,15 @@ exports.processGeolocation = onCall(async (request) => {
           }
         }
         throw new HttpsError("resource-exhausted", 
-          `Free limit reached! You've used ${userData.usage?.current || 0}/3 weekly guesses. Upgrade for unlimited guesses or wait until ${resetDate} for reset.`);
+          `Free limit reached! You've used ${currentUserData.usage?.current || 0}/3 weekly guesses. Upgrade for unlimited guesses or wait until ${resetDate} for reset.`);
       } else {
         throw new HttpsError("resource-exhausted", usageCheck.message);
       }
     }
 
     // For paid users, ensure they have valid subscription
-    const subscriptionType = userData.subscriptionType || "free";
-    if (subscriptionType !== "free" && !hasValidAccess(userData)) {
+    const subscriptionType = currentUserData.subscriptionType || "free";
+    if (subscriptionType !== "free" && !hasValidAccess(currentUserData)) {
       throw new HttpsError("permission-denied", "Active subscription required");
     }
 
@@ -197,8 +216,8 @@ exports.processGeolocation = onCall(async (request) => {
     const geoResult = await processWithOpenAI(imageData, apiKey);
 
     // Record usage
-    console.log("Recording usage for user:", extpayUserId, "Current usage before:", userData.usage?.current || 0);
-    await recordUsage(userRef, userData, geoResult);
+    console.log("Recording usage for user:", extpayUserId, "Current usage before:", currentUserData.usage?.current || 0);
+    await recordUsage(userRef, currentUserData, geoResult);
 
     // Get updated usage after recording
     const updatedUserDoc = await userRef.get();
@@ -210,8 +229,8 @@ exports.processGeolocation = onCall(async (request) => {
       result: geoResult,
       usage: {
         current: updatedUserData.usage.current,
-        limit: USAGE_LIMITS[userData.subscriptionType]?.limit || 3,
-        resetDate: userData.usage.resetDate,
+        limit: USAGE_LIMITS[currentUserData.subscriptionType]?.limit || 3,
+        resetDate: currentUserData.usage.resetDate,
       },
     };
   } catch (error) {
@@ -252,10 +271,49 @@ exports.getUserUsage = onCall(async (request) => {
       calculatedLimit: limit
     });
 
+    // Fix incorrect reset dates for pro users (migration logic)
+    let resetDate = userData.usage?.resetDate;
+    if (subscriptionType === 'pro' && resetDate) {
+      const now = new Date();
+      let currentResetDate;
+      
+      // Parse the current reset date
+      if (resetDate._seconds) {
+        currentResetDate = new Date(resetDate._seconds * 1000);
+      } else {
+        currentResetDate = new Date(resetDate);
+      }
+      
+      // Check if this looks like a calendar month reset (1st of month) for a pro user
+      // If it's the 1st of a month and they don't have a proSubscriptionStartDate, fix it
+      if (currentResetDate.getDate() === 1 && !userData.proSubscriptionStartDate) {
+        console.log(`Fixing incorrect reset date for pro user ${extpayUserId}`);
+        
+        // Set their subscription start date to 30 days before the current reset date
+        const subscriptionStartDate = new Date(currentResetDate);
+        subscriptionStartDate.setDate(currentResetDate.getDate() - 30);
+        
+        // Calculate correct reset date (30 days from now)
+        const correctResetDate = new Date(now);
+        correctResetDate.setDate(now.getDate() + 30);
+        correctResetDate.setHours(0, 0, 0, 0);
+        
+        // Update the user's data
+        await userDoc.ref.update({
+          'usage.resetDate': correctResetDate,
+          'proSubscriptionStartDate': subscriptionStartDate,
+          'updatedAt': now
+        });
+        
+        resetDate = correctResetDate;
+        console.log(`Updated pro user ${extpayUserId} reset date to ${correctResetDate.toLocaleDateString()}`);
+      }
+    }
+
     return {
       current: userData.usage?.current || 0,
       limit,
-      resetDate: userData.usage?.resetDate,
+      resetDate: resetDate,
       subscriptionType,
       subscriptionStatus: userData.subscriptionStatus,
       isCancelled: userData.isCancelled || false,
@@ -264,6 +322,49 @@ exports.getUserUsage = onCall(async (request) => {
   } catch (error) {
     console.error("Error getting user usage:", error);
     throw new HttpsError("internal", "Failed to get user usage");
+  }
+});
+
+/**
+ * TEST FUNCTION: Manually trigger reset for a specific user (for testing)
+ */
+exports.testResetUser = onCall(async (request) => {
+  const {extpayUserId} = request.data;
+  
+  if (!extpayUserId) {
+    throw new HttpsError("invalid-argument", "User ID is required");
+  }
+  
+  try {
+    const userRef = db.collection("users").doc(extpayUserId);
+    const userDoc = await userRef.get();
+    
+    if (!userDoc.exists) {
+      throw new HttpsError("not-found", "User not found");
+    }
+    
+    const userData = userDoc.data();
+    const subscriptionType = userData.subscriptionType || "free";
+    
+    // Set reset date to yesterday to trigger auto-reset on next request
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    
+    await userRef.update({
+      "usage.resetDate": yesterday,
+      updatedAt: new Date(),
+    });
+    
+    return {
+      success: true,
+      message: `Reset date set to yesterday for user ${extpayUserId}. Next request will trigger auto-reset.`,
+      subscriptionType,
+      oldResetDate: userData.usage?.resetDate,
+      newResetDate: yesterday,
+    };
+  } catch (error) {
+    console.error("Error in test reset:", error);
+    throw new HttpsError("internal", "Failed to set test reset date");
   }
 });
 
@@ -288,10 +389,27 @@ exports.resetUsageCounters = onRequest(async (req, res) => {
         const userData = doc.data();
         const subscriptionType = userData.subscriptionType || "free";
         const period = USAGE_LIMITS[subscriptionType]?.period || "week";
+        
+        // For pro users, calculate next reset from their subscription start date
+        let nextResetDate;
+        if (subscriptionType === 'pro' && userData.proSubscriptionStartDate) {
+          // Calculate how many 30-day periods have passed since subscription start
+          const subscriptionStart = userData.proSubscriptionStartDate.toDate();
+          const daysSinceStart = Math.floor((now - subscriptionStart) / (1000 * 60 * 60 * 24));
+          const periodsPassed = Math.floor(daysSinceStart / 30);
+          
+          // Next reset is (periodsPassed + 1) * 30 days from subscription start
+          const nextResetFromStart = new Date(subscriptionStart);
+          nextResetFromStart.setDate(subscriptionStart.getDate() + ((periodsPassed + 1) * 30));
+          nextResetDate = nextResetFromStart;
+        } else {
+          // Use default calculation for free/trial users
+          nextResetDate = getNextResetDate(period);
+        }
 
         batch.update(doc.ref, {
           "usage.current": 0,
-          "usage.resetDate": getNextResetDate(period),
+          "usage.resetDate": nextResetDate,
           updatedAt: now,
         });
         resetCount++;
@@ -539,18 +657,80 @@ function hasValidAccess(userData) {
 /**
  * Check usage limits
  */
-function checkUsageLimit(userData) {
+async function checkUsageLimit(userData, userRef = null) {
   const subscriptionType = userData.subscriptionType || "free";
   const usage = userData.usage || {current: 0};
   const limit = USAGE_LIMITS[subscriptionType]?.limit || 3;
+  const now = new Date();
 
+  // Check if reset date has passed and automatically reset usage
+  if (userData.usage?.resetDate) {
+    let resetDate;
+    if (userData.usage.resetDate._seconds) {
+      resetDate = new Date(userData.usage.resetDate._seconds * 1000);
+    } else {
+      resetDate = new Date(userData.usage.resetDate);
+    }
+
+    // If reset date has passed, automatically reset usage
+    if (now >= resetDate && userRef) {
+      console.log(`Auto-resetting usage for user - reset date ${resetDate.toLocaleDateString()} has passed`);
+      
+      // Calculate next reset date
+      const period = USAGE_LIMITS[subscriptionType]?.period || "week";
+      let nextResetDate;
+      
+      if (subscriptionType === 'pro' && userData.proSubscriptionStartDate) {
+        // For pro users, calculate from subscription start date
+        const subscriptionStart = userData.proSubscriptionStartDate.toDate ? 
+          userData.proSubscriptionStartDate.toDate() : 
+          new Date(userData.proSubscriptionStartDate);
+        const daysSinceStart = Math.floor((now - subscriptionStart) / (1000 * 60 * 60 * 24));
+        const periodsPassed = Math.floor(daysSinceStart / 30);
+        
+        nextResetDate = new Date(subscriptionStart);
+        nextResetDate.setDate(subscriptionStart.getDate() + ((periodsPassed + 1) * 30));
+      } else {
+        // For free/trial users, use standard calculation
+        nextResetDate = getNextResetDate(period);
+      }
+
+      // Reset usage to 0 and update reset date
+      await userRef.update({
+        "usage.current": 0,
+        "usage.resetDate": nextResetDate,
+        updatedAt: now,
+      });
+
+      console.log(`Usage reset to 0, next reset: ${nextResetDate.toLocaleDateString()}`);
+      
+      // Return that usage is allowed since we just reset
+      return {allowed: true, wasReset: true};
+    }
+  }
+
+  // Normal usage limit check
   if (usage.current >= limit) {
     const period = USAGE_LIMITS[subscriptionType]?.period || "week";
-    const resetDate = new Date(userData.usage?.resetDate).toLocaleDateString();
+    let resetDateString = 'soon';
+    
+    if (userData.usage?.resetDate) {
+      try {
+        let resetDate;
+        if (userData.usage.resetDate._seconds) {
+          resetDate = new Date(userData.usage.resetDate._seconds * 1000);
+        } else {
+          resetDate = new Date(userData.usage.resetDate);
+        }
+        resetDateString = resetDate.toLocaleDateString();
+      } catch (e) {
+        console.error('Error parsing reset date:', e);
+      }
+    }
 
     return {
       allowed: false,
-      message: `You've reached your ${period}ly limit of ${limit} requests. Resets on ${resetDate}.`,
+      message: `You've reached your ${period}ly limit of ${limit} requests. Resets on ${resetDateString}.`,
     };
   }
 
@@ -580,17 +760,17 @@ async function recordUsage(userRef, userData, geoResult) {
 /**
  * Calculate next reset date
  */
-function getNextResetDate(period) {
-  const now = new Date();
-  const resetDate = new Date(now);
+function getNextResetDate(period, fromDate = null) {
+  const baseDate = fromDate ? new Date(fromDate) : new Date();
+  const resetDate = new Date(baseDate);
 
   if (period === "week") {
-    // Reset every Monday
-    const daysUntilMonday = (8 - now.getDay()) % 7;
-    resetDate.setDate(now.getDate() + (daysUntilMonday || 7));
+    // Reset every Monday for free trial users
+    const daysUntilMonday = (8 - baseDate.getDay()) % 7;
+    resetDate.setDate(baseDate.getDate() + (daysUntilMonday || 7));
   } else if (period === "month") {
-    // Reset on first day of next month
-    resetDate.setMonth(now.getMonth() + 1, 1);
+    // Reset 30 days from the base date (subscription date for pro users)
+    resetDate.setDate(baseDate.getDate() + 30);
   }
 
   resetDate.setHours(0, 0, 0, 0);

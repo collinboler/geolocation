@@ -1059,25 +1059,25 @@ body.dark-mode .premium-features-list p strong {
 
 /* Trial active button styles */
 .payment-button.trial-active {
-    background: linear-gradient(135deg, #ff7675, #fd79a8);
+    background: linear-gradient(135deg, #4ade80, #22d3ee);
     color: white;
     animation: pulse 2s infinite;
 }
 
 .payment-button.trial-active:hover {
-    background: linear-gradient(135deg, #fd79a8, #ff7675);
-    box-shadow: 0 6px 15px rgba(255, 118, 117, 0.4);
+    background: linear-gradient(135deg, #22d3ee, #4ade80);
+    box-shadow: 0 6px 15px rgba(74, 222, 128, 0.4);
 }
 
 @keyframes pulse {
     0% {
-        box-shadow: 0 4px 12px rgba(255, 118, 117, 0.3);
+        box-shadow: 0 4px 12px rgba(74, 222, 128, 0.3);
     }
     50% {
-        box-shadow: 0 6px 20px rgba(255, 118, 117, 0.5);
+        box-shadow: 0 6px 20px rgba(74, 222, 128, 0.5);
     }
     100% {
-        box-shadow: 0 4px 12px rgba(255, 118, 117, 0.3);
+        box-shadow: 0 4px 12px rgba(74, 222, 128, 0.3);
     }
 }
 
@@ -1099,7 +1099,7 @@ body.dark-mode .manage-plan-button:hover {
 }
 
 body.dark-mode .payment-button.trial-active {
-    box-shadow: 0 4px 12px rgba(255, 118, 117, 0.2);
+    box-shadow: 0 4px 12px rgba(74, 222, 128, 0.2);
 }
 
 /* Trial activation notification */

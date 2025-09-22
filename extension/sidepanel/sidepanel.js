@@ -1219,15 +1219,8 @@ function updatePaymentUI(user) {
   } else if (user.trialStartedAt && !user.paid) {
     // User is on trial - hide sign-in button and show upgrade button
     // Check if this is a past due user who should see "Renew Pro"
-    // This could be a user who previously had a subscription but is now in trial mode due to payment issues
-    const hasEmailDomain = user.email && (user.email.includes('@gmail.com') || user.email.includes('@'));
-    const isLikelyPastDue = backendFlags?.subscriptionType === 'free' && 
-                           backendFlags?.subscriptionStatus === 'trial' && 
-                           user.paid === false && 
-                           hasEmailDomain && 
-                           user.installedAt; // User has been around for a while
-    
-    const shouldShowRenew = isLikelyPastDue;
+    // Only show "payment declined" if backend explicitly flags them as past due
+    const shouldShowRenew = backendFlags?.isPastDue === true;
     
     paymentButton.innerHTML = `
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -1345,17 +1338,10 @@ function updateUpgradeCardHeader(user) {
     upgradeIcon.innerHTML = '';
   } else if (user.trialStartedAt && !user.paid) {
     // User is on trial - check if this is a past due user who should see "Renew Pro"
-    // This could be a user who previously had a subscription but is now in trial mode due to payment issues
-    const hasEmailDomain = user.email && (user.email.includes('@gmail.com') || user.email.includes('@'));
-    const isLikelyPastDue = backendFlags?.subscriptionType === 'free' && 
-                           backendFlags?.subscriptionStatus === 'trial' && 
-                           user.paid === false && 
-                           hasEmailDomain && 
-                           user.installedAt; // User has been around for a while
+    // Only show "payment declined" if backend explicitly flags them as past due
+    const shouldShowRenew = backendFlags?.isPastDue === true;
     
-    const shouldShowRenew = isLikelyPastDue;
-    
-    upgradeHeaderH3.textContent = shouldShowRenew ? 'Payment Past Due - Renew Pro' : 'Trial Active - Upgrade to Pro';
+    upgradeHeaderH3.textContent = shouldShowRenew ? 'Free Mode Activated (payment declined)' : 'Free Mode Activated';
     upgradeCard.classList.add('trial-active');
     // Remove icon for cleaner look
     upgradeIcon.innerHTML = '';
@@ -1427,12 +1413,12 @@ function updateUpgradeCardFeatures(user) {
   if (isSubscriptionActive) {
     // Pro mode (including cancelled but still active) - show pro features
     featureItems[0].textContent = '1,000 Guesses each month';
-    featureItems[1].textContent = 'High Accuracy Location Analysis';
+    featureItems[1].textContent = 'Superior Accuracy';
     featureItems[2].textContent = 'Undetectable';
   } else {
     // Free trial mode or unauthenticated - show trial features
-    featureItems[0].textContent = '3 free guesses each week';
-    featureItems[1].textContent = 'High Accuracy Location Analysis';
+    featureItems[0].textContent = '3 free Guesses each week';
+    featureItems[1].textContent = 'High Accuracy';
     featureItems[2].textContent = 'Undetectable';
   }
 }
@@ -1547,10 +1533,22 @@ function showUsageLimitExceededModal(errorData) {
   
   console.log('Created modal element:', modal);
   
-  // Extract reset date from error message if available
-  const errorMessage = errorData.error?.message || 'You\'ve reached your monthly limit';
-  const resetDateMatch = errorMessage.match(/Resets on (.+?)\./);
-  const resetDate = resetDateMatch ? resetDateMatch[1] : 'the next billing cycle';
+  // Extract reset date - try to get it from the already displayed usage info
+  let resetDate = 'the next billing cycle';
+  
+  // First try to get it from the usage display on the page
+  const usageResetEl = document.getElementById('usage-reset');
+  if (usageResetEl && usageResetEl.textContent && usageResetEl.textContent !== '-') {
+    resetDate = usageResetEl.textContent;
+  } else {
+    // Fallback: try to extract from error message
+    const errorMessage = errorData.error?.message || 'You\'ve reached your monthly limit';
+    console.log('Error message for date parsing:', errorMessage);
+    const resetDateMatch = errorMessage.match(/Resets on (.+?)\./);
+    if (resetDateMatch && resetDateMatch[1] !== 'Invalid Date') {
+      resetDate = resetDateMatch[1];
+    }
+  }
   
   modal.innerHTML = `
     <div class="modal-content usage-limit-modal-content">
@@ -1566,8 +1564,8 @@ function showUsageLimitExceededModal(errorData) {
               <path d="M12 6v6l4 2"/>
             </svg>
           </div>
-          <h4>Thank you for your usage!</h4>
-          <p>You've reached your monthly limit of <strong>1,000 AI location guesses</strong>.</p>
+          <h4>Thank you for using GeoGuesser Hacker!</h4>
+          <p>You've reached your monthly limit of <strong>1,000 Guesses</strong>.</p>
           <p>Your usage will reset on <strong>${resetDate}</strong>.</p>
           
           <div class="contact-info">
@@ -1623,6 +1621,47 @@ function showUsageLimitExceededModal(errorData) {
 
   // Make function globally available for onclick handlers
   window.removeCancelledSubscriptionWarning = removeCancelledSubscriptionWarning;
+
+// TEST FUNCTION: Force reset test for current user
+async function testUsageReset() {
+  try {
+    const user = await extpay.getUser();
+    const extpayUserId = user.userId || user.email;
+    
+    if (!extpayUserId) {
+      console.error('No user ID found for testing');
+      return;
+    }
+    
+    console.log('Testing usage reset for user:', extpayUserId);
+    
+    // Call the test function
+    const response = await fetch('https://us-central1-geoguesser-hacker-ext.cloudfunctions.net/testResetUser', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ data: { extpayUserId } })
+    });
+    
+    if (response.ok) {
+      const result = await response.json();
+      console.log('Test reset result:', result.result);
+      
+      alert(`Test setup complete! Your reset date was set to yesterday. 
+             Now make a guess and check the console logs to see the auto-reset in action.
+             
+             Subscription Type: ${result.result.subscriptionType}
+             Old Reset Date: ${new Date(result.result.oldResetDate._seconds * 1000).toLocaleDateString()}
+             New Reset Date: ${result.result.newResetDate}`);
+    } else {
+      console.error('Test reset failed:', response.status);
+    }
+  } catch (error) {
+    console.error('Error in test reset:', error);
+  }
+}
+
+// Make test function globally available
+window.testUsageReset = testUsageReset;
 
 // Comprehensive ExtPay.js Edge Case Handler
 async function handleExtPayEdgeCases() {
