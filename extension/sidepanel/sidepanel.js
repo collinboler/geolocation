@@ -1114,7 +1114,7 @@ function updatePaymentUI(user) {
   
   if (user.paid) {
     // User has paid subscription
-    paymentButton.textContent = '✓ Premium Activated';
+    paymentButton.textContent = 'Pro Mode Activated';
     paymentButton.classList.add('premium-active');
     paymentButton.disabled = true;
     paymentButton.style.display = 'flex';
