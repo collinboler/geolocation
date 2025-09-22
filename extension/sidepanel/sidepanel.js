@@ -686,11 +686,23 @@ async function processImage(dataUrl) {
     
     console.log('Firebase function response status:', response.status);
 
-    if (!response.ok) {
-      const errorData = await response.json();
-      console.error('Firebase function error:', errorData);
-      throw new Error(errorData.error?.message || `HTTP error! status: ${response.status}`);
-    }
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error('Firebase function error:', errorData);
+        
+        // Handle 429 - Usage limit exceeded
+        if (response.status === 429) {
+          // Restore button state first
+          cameraIcon.style.display = 'inline';
+          buttonText.style.display = 'inline';
+          loadingSpinner.style.display = 'none';
+          
+          showUsageLimitExceededModal(errorData);
+          return;
+        }
+        
+        throw new Error(errorData.error?.message || `HTTP error! status: ${response.status}`);
+      }
 
     console.log('Response OK, parsing JSON...');
     const data = await response.json();
@@ -1345,35 +1357,19 @@ function updateUpgradeCardHeader(user) {
     
     upgradeHeaderH3.textContent = shouldShowRenew ? 'Payment Past Due - Renew Pro' : 'Trial Active - Upgrade to Pro';
     upgradeCard.classList.add('trial-active');
-    // Icon for trial or past due
-    upgradeIcon.innerHTML = `
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" class="upgrade-icon trial-active">
-        ${shouldShowRenew ? 
-          '<path d="M1 4v6h6M23 20v-6h-6"/><path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15"/>' :
-          '<path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>'
-        }
-      </svg>
-    `;
+    // Remove icon for cleaner look
+    upgradeIcon.innerHTML = '';
   } else if (isPastDueUser) {
     // User's payment is past due - show renewal needed
     upgradeHeaderH3.textContent = 'Payment Past Due - Renew Pro';
     upgradeCard.classList.add('trial-active');
-    upgradeIcon.innerHTML = `
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" class="upgrade-icon trial-active">
-        <path d="M1 4v6h6M23 20v-6h-6"/>
-        <path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15"/>
-      </svg>
-    `;
+    // Remove icon for cleaner look
+    upgradeIcon.innerHTML = '';
   } else {
     // Default state - user needs to sign in
     upgradeHeaderH3.textContent = 'Sign In Required';
-    // User/account icon for sign in
-    upgradeIcon.innerHTML = `
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" class="upgrade-icon">
-        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
-        <circle cx="12" cy="7" r="4"/>
-      </svg>
-    `;
+    // Remove icon for cleaner look
+    upgradeIcon.innerHTML = '';
   }
 }
 
@@ -1534,8 +1530,99 @@ function removeCancelledSubscriptionWarning() {
   }
 }
 
-// Make function globally available for onclick handlers
-window.removeCancelledSubscriptionWarning = removeCancelledSubscriptionWarning;
+function showUsageLimitExceededModal(errorData) {
+  console.log('showUsageLimitExceededModal called with:', errorData);
+  
+  // Remove any existing modal first
+  const existingModal = document.getElementById('usage-limit-modal');
+  if (existingModal) {
+    console.log('Removing existing modal');
+    existingModal.remove();
+  }
+
+  // Create the modal overlay
+  const modal = document.createElement('div');
+  modal.id = 'usage-limit-modal';
+  modal.className = 'modal-overlay';
+  
+  console.log('Created modal element:', modal);
+  
+  // Extract reset date from error message if available
+  const errorMessage = errorData.error?.message || 'You\'ve reached your monthly limit';
+  const resetDateMatch = errorMessage.match(/Resets on (.+?)\./);
+  const resetDate = resetDateMatch ? resetDateMatch[1] : 'the next billing cycle';
+  
+  modal.innerHTML = `
+    <div class="modal-content usage-limit-modal-content">
+      <div class="modal-header">
+        <h3>Pro Usage Limit Reached</h3>
+        <button class="modal-close" id="close-usage-modal">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="usage-limit-info">
+          <div class="usage-limit-icon">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"/>
+              <path d="M12 6v6l4 2"/>
+            </svg>
+          </div>
+          <h4>Thank you for your usage!</h4>
+          <p>You've reached your monthly limit of <strong>1,000 AI location guesses</strong>.</p>
+          <p>Your usage will reset on <strong>${resetDate}</strong>.</p>
+          
+          <div class="contact-info">
+            <p>Need more guesses or have questions? Contact us:</p>
+            <a href="mailto:collinboler@princeton.edu" class="contact-email">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+                <polyline points="22,6 12,13 2,6"/>
+              </svg>
+              collinboler@princeton.edu
+            </a>
+          </div>
+        </div>
+        
+        <div class="usage-limit-actions">
+          <button class="close-modal-btn" id="close-usage-limit-btn">
+            Got it!
+          </button>
+        </div>
+      </div>
+    </div>
+  `;
+  
+  // Add to page
+  console.log('Adding modal to document.body');
+  document.body.appendChild(modal);
+  console.log('Modal added to page, checking if visible');
+  
+  // Add event listeners
+  const closeButtons = modal.querySelectorAll('#close-usage-modal, #close-usage-limit-btn');
+  closeButtons.forEach(btn => {
+    btn.addEventListener('click', () => {
+      modal.remove();
+    });
+  });
+  
+  // Close on overlay click
+  modal.addEventListener('click', (e) => {
+    if (e.target === modal) {
+      modal.remove();
+    }
+  });
+  
+  // Close on Escape key
+  const handleEscape = (e) => {
+    if (e.key === 'Escape') {
+      modal.remove();
+      document.removeEventListener('keydown', handleEscape);
+    }
+  };
+  document.addEventListener('keydown', handleEscape);
+}
+
+  // Make function globally available for onclick handlers
+  window.removeCancelledSubscriptionWarning = removeCancelledSubscriptionWarning;
 
 // Comprehensive ExtPay.js Edge Case Handler
 async function handleExtPayEdgeCases() {
