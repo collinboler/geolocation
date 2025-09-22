@@ -889,7 +889,7 @@ body.dark-mode .premium-features-list p strong {
 }
 
 /* Trial button styles */
-.trial-button {
+.trial-button, .signin-button-main {
     background: linear-gradient(135deg, #ffd700, #ffed4e);
     color: #333;
     border: none;
@@ -908,7 +908,7 @@ body.dark-mode .premium-features-list p strong {
     margin-top: 8px;
 }
 
-.trial-button:hover {
+.trial-button:hover, .signin-button-main:hover {
     background: linear-gradient(135deg, #ffed4e, #ffd700);
     box-shadow: 0 6px 15px rgba(255, 215, 0, 0.4);
     transform: translateY(-1px);
@@ -965,11 +965,11 @@ body.dark-mode .premium-features-list p strong {
 }
 
 /* Dark mode styles for new buttons */
-body.dark-mode .trial-button {
+body.dark-mode .trial-button, body.dark-mode .signin-button-main {
     box-shadow: 0 4px 12px rgba(255, 215, 0, 0.2);
 }
 
-body.dark-mode .trial-button:hover {
+body.dark-mode .trial-button:hover, body.dark-mode .signin-button-main:hover {
     box-shadow: 0 6px 15px rgba(255, 215, 0, 0.3);
 }
 
@@ -1215,4 +1215,509 @@ body.dark-mode .usage-label {
 
 body.dark-mode .usage-value {
     color: #e5e5e5;
+}
+
+/* Usage Limit Popup Styles */
+.usage-limit-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(4px);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 10000;
+    padding: 20px;
+    box-sizing: border-box;
+}
+
+.usage-limit-modal {
+    background: white;
+    border-radius: 16px;
+    max-width: 480px;
+    width: 100%;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+    animation: modalSlideIn 0.3s ease-out;
+}
+
+@keyframes modalSlideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-20px) scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 24px 24px 0 24px;
+    border-bottom: 1px solid #f0f0f0;
+    margin-bottom: 24px;
+}
+
+.modal-header h3 {
+    margin: 0;
+    font-size: 24px;
+    font-weight: 700;
+    color: #333;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.modal-header h3::before {
+    content: "⚠️";
+    font-size: 20px;
+}
+
+.modal-close {
+    background: none;
+    border: none;
+    font-size: 24px;
+    color: #999;
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 4px;
+    transition: all 0.2s ease;
+}
+
+.modal-close:hover {
+    background: #f5f5f5;
+    color: #666;
+}
+
+.modal-body {
+    padding: 0 24px 24px 24px;
+}
+
+.limit-info {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    margin-bottom: 32px;
+    padding: 24px;
+    background: linear-gradient(135deg, #ff6b6b, #ff8e8e);
+    border-radius: 12px;
+    color: white;
+}
+
+.usage-circle {
+    width: 100px;
+    height: 100px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.2);
+    border: 3px solid rgba(255, 255, 255, 0.3);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    margin-bottom: 16px;
+    backdrop-filter: blur(8px);
+}
+
+.usage-count {
+    font-size: 24px;
+    font-weight: 700;
+    line-height: 1;
+}
+
+.usage-circle .usage-label {
+    font-size: 12px;
+    opacity: 0.9;
+    font-weight: 500;
+}
+
+.limit-info p {
+    margin: 0;
+    font-size: 16px;
+    opacity: 0.95;
+}
+
+.upgrade-options h4 {
+    margin: 0 0 20px 0;
+    font-size: 18px;
+    font-weight: 600;
+    color: #333;
+    text-align: center;
+}
+
+.option-card {
+    border: 2px solid #e0e0e0;
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 16px;
+    transition: all 0.3s ease;
+    background: white;
+}
+
+.option-card:hover {
+    border-color: #6c5ce7;
+    box-shadow: 0 4px 12px rgba(108, 92, 231, 0.15);
+    transform: translateY(-1px);
+}
+
+.premium-option {
+    border-color: #6c5ce7;
+    background: linear-gradient(135deg, #6c5ce7, #74b9ff);
+    color: white;
+}
+
+.premium-option:hover {
+    border-color: #5b4cdb;
+    box-shadow: 0 6px 20px rgba(108, 92, 231, 0.3);
+}
+
+.option-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+
+.option-icon {
+    font-size: 24px;
+}
+
+.option-title {
+    font-size: 18px;
+    font-weight: 600;
+}
+
+.option-benefits {
+    margin-bottom: 16px;
+}
+
+.option-benefits p {
+    margin: 4px 0;
+    font-size: 14px;
+    opacity: 0.9;
+}
+
+.upgrade-button {
+    background: rgba(255, 255, 255, 0.2);
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    color: white;
+    padding: 12px 24px;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    width: 100%;
+    backdrop-filter: blur(8px);
+}
+
+.upgrade-button:hover {
+    background: rgba(255, 255, 255, 0.3);
+    border-color: rgba(255, 255, 255, 0.5);
+    transform: translateY(-1px);
+}
+
+.wait-option {
+    background: #f8f9fa;
+    border-color: #dee2e6;
+}
+
+.wait-option .option-header {
+    color: #666;
+}
+
+.option-details {
+    text-align: center;
+}
+
+.option-details p {
+    margin: 8px 0;
+    color: #666;
+    font-size: 14px;
+}
+
+.option-details strong {
+    display: block;
+    font-size: 16px;
+    color: #333;
+    margin-top: 8px;
+    padding: 8px 12px;
+    background: #e9ecef;
+    border-radius: 6px;
+    font-weight: 600;
+}
+
+/* Dark Mode for Usage Limit Popup */
+body.dark-mode .usage-limit-modal {
+    background: #2d3748;
+    color: #e2e8f0;
+}
+
+body.dark-mode .modal-header {
+    border-bottom-color: #4a5568;
+}
+
+body.dark-mode .modal-header h3 {
+    color: #e2e8f0;
+}
+
+body.dark-mode .modal-close {
+    color: #a0aec0;
+}
+
+body.dark-mode .modal-close:hover {
+    background: #4a5568;
+    color: #e2e8f0;
+}
+
+body.dark-mode .upgrade-options h4 {
+    color: #e2e8f0;
+}
+
+body.dark-mode .option-card {
+    background: #4a5568;
+    border-color: #718096;
+}
+
+body.dark-mode .option-card:hover {
+    border-color: #6c5ce7;
+}
+
+body.dark-mode .wait-option {
+    background: #374151;
+    border-color: #6b7280;
+}
+
+body.dark-mode .wait-option .option-header {
+    color: #9ca3af;
+}
+
+body.dark-mode .option-details p {
+    color: #9ca3af;
+}
+
+body.dark-mode .option-details strong {
+    background: #374151;
+    color: #e2e8f0;
+}
+
+/* Sign-In Prompt Styles */
+.signin-prompt-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.8);
+    backdrop-filter: blur(6px);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 10001;
+    padding: 20px;
+    box-sizing: border-box;
+}
+
+.signin-prompt-modal {
+    background: white;
+    border-radius: 20px;
+    max-width: 500px;
+    width: 100%;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: 0 25px 50px rgba(0, 0, 0, 0.4);
+    animation: signinModalSlideIn 0.4s ease-out;
+}
+
+@keyframes signinModalSlideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-30px) scale(0.9);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+.signin-info {
+    text-align: center;
+    padding: 0 0 24px 0;
+}
+
+.signin-icon {
+    font-size: 48px;
+    margin-bottom: 16px;
+    display: block;
+}
+
+.signin-info h4 {
+    margin: 0 0 12px 0;
+    font-size: 24px;
+    font-weight: 700;
+    color: #2d3748;
+}
+
+.signin-info p {
+    margin: 0 0 24px 0;
+    font-size: 16px;
+    color: #666;
+    line-height: 1.5;
+}
+
+.benefits-list {
+    display: grid;
+    gap: 12px;
+    margin-bottom: 24px;
+}
+
+.benefit-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    background: #f8fffe;
+    border: 1px solid #e0f7ff;
+    border-radius: 10px;
+    transition: all 0.2s ease;
+}
+
+.benefit-item:hover {
+    background: #f0fffe;
+    border-color: #b8f5ff;
+    transform: translateY(-1px);
+}
+
+.benefit-icon {
+    font-size: 18px;
+    flex-shrink: 0;
+}
+
+.benefit-item span:last-child {
+    font-size: 14px;
+    font-weight: 500;
+    color: #374151;
+}
+
+.signin-actions {
+    text-align: center;
+}
+
+.auth-buttons {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+.signup-button, .login-button {
+    flex: 1;
+    border: none;
+    color: white;
+    padding: 14px 20px;
+    border-radius: 10px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+}
+
+.signup-button {
+    background: linear-gradient(135deg, #10b981, #059669);
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+}
+
+.signup-button:hover {
+    background: linear-gradient(135deg, #059669, #047857);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
+}
+
+.login-button {
+    background: linear-gradient(135deg, #4f46e5, #7c3aed);
+    box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);
+}
+
+.login-button:hover {
+    background: linear-gradient(135deg, #4338ca, #6d28d9);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(79, 70, 229, 0.4);
+}
+
+.signup-button:active, .login-button:active {
+    transform: translateY(0);
+}
+
+.auth-icon {
+    font-size: 16px;
+    font-weight: bold;
+    color: rgba(255, 255, 255, 0.9);
+}
+
+.signin-note {
+    margin: 16px 0 0 0;
+    text-align: center;
+}
+
+.signin-note small {
+    color: #9ca3af;
+    font-size: 12px;
+}
+
+/* Dark Mode for Sign-In Prompt */
+body.dark-mode .signin-prompt-modal {
+    background: #1f2937;
+    color: #f9fafb;
+}
+
+body.dark-mode .signin-info h4 {
+    color: #f9fafb;
+}
+
+body.dark-mode .signin-info p {
+    color: #d1d5db;
+}
+
+body.dark-mode .benefit-item {
+    background: #374151;
+    border-color: #4b5563;
+}
+
+body.dark-mode .benefit-item:hover {
+    background: #4b5563;
+    border-color: #6b7280;
+}
+
+body.dark-mode .benefit-item span:last-child {
+    color: #f3f4f6;
+}
+
+body.dark-mode .signin-note small {
+    color: #6b7280;
+}
+
+body.dark-mode .signup-button {
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2);
+}
+
+body.dark-mode .signup-button:hover {
+    box-shadow: 0 6px 20px rgba(16, 185, 129, 0.3);
+}
+
+body.dark-mode .login-button {
+    box-shadow: 0 4px 12px rgba(79, 70, 229, 0.2);
+}
+
+body.dark-mode .login-button:hover {
+    box-shadow: 0 6px 20px rgba(79, 70, 229, 0.3);
 } 

@@ -136,7 +136,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const advancedDropdownToggle = document.getElementById('advanced-dropdown-toggle');
   const advancedSettingsDropdown = document.getElementById('advanced-settings-dropdown');
   const paymentButton = document.getElementById('payment-button');
-  const trialButton = document.getElementById('trial-button');
+  const signInButton = document.getElementById('signin-button');
   const managePlanButton = document.getElementById('manage-plan-button');
 
   // Ensure main page is always shown by default
@@ -244,12 +244,12 @@ document.addEventListener('DOMContentLoaded', () => {
       coordsDiv.textContent = `${result.coords.lat}, ${result.coords.lng}`;
       updateMapIframe(result.coords.lat, result.coords.lng, zoomLevel);
     } else {
-      // Default to Laurizan Hall, Whitman College, Princeton NJ if no saved coordinates
+      // Default to Nassau Princeton NJ if no saved coordinates
       const defaultCoords = {
         lat: 40.348600,
         lng: -74.659300
       };
-      const defaultLocation = "Whitman College, Princeton, New Jersey, United States";
+      const defaultLocation = "Nassau Hall, Princeton, New Jersey, United States";
       
       locationWordsDiv.textContent = defaultLocation;
       coordsDiv.textContent = `${defaultCoords.lat}, ${defaultCoords.lng}`;
@@ -307,7 +307,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Capture button event listener
   captureButton.addEventListener('click', async () => {
-    // Check premium access first
+    // Check if user is signed in first
+    const user = await extpay.getUser();
+    const extpayUserId = user.userId || user.email || null;
+    
+    if (!extpayUserId || extpayUserId === 'anonymous') {
+      // Show sign-in prompt for anonymous users
+      showSignInPrompt();
+      return;
+    }
+    
+    // For signed-in users, check premium access and usage limits
     const hasPremiumAccess = await checkPremiumAccess();
     if (!hasPremiumAccess) {
       return;
@@ -361,9 +371,9 @@ document.addEventListener('DOMContentLoaded', () => {
     extpay.openPaymentPage();
   });
 
-  // Trial button event listener
-  trialButton.addEventListener('click', () => {
-    extpay.openTrialPage();
+  // Sign-in button event listener
+  signInButton.addEventListener('click', () => {
+    showSignInPrompt();
   });
 
   // Manage plan button event listener
@@ -383,10 +393,10 @@ document.addEventListener('DOMContentLoaded', () => {
   extpay.onTrialStarted.addListener(user => {
     console.log('User started trial:', user);
     
-    // Immediately hide the trial button
-    const trialButton = document.getElementById('trial-button');
-    if (trialButton) {
-      trialButton.style.display = 'none';
+    // Immediately hide the sign-in button
+    const signInButton = document.getElementById('signin-button');
+    if (signInButton) {
+      signInButton.style.display = 'none';
     }
     
     // Sync trial status to Firebase
@@ -727,7 +737,19 @@ async function processImage(dataUrl) {
   try {
     // Get current user from ExtPay
     const user = await extpay.getUser();
-    const extpayUserId = user.userId || user.email || 'anonymous';
+    const extpayUserId = user.userId || user.email || null;
+    
+    // Check if user is signed in - if not, prompt for sign-in
+    if (!extpayUserId || extpayUserId === 'anonymous') {
+      // Restore button state first
+      cameraIcon.style.display = 'inline';
+      buttonText.style.display = 'inline';
+      loadingSpinner.style.display = 'none';
+      
+      // Show sign-in prompt
+      showSignInPrompt();
+      return;
+    }
     
     console.log('Processing image for user:', extpayUserId);
     console.log('Image data length:', dataUrl.length);
@@ -811,10 +833,19 @@ async function processImage(dataUrl) {
     console.error('Error:', error);
     
     // Handle specific error types
-    if (error.message.includes('resource-exhausted')) {
+    console.log('Error message for analysis:', error.message);
+    
+    if (error.message.includes('Free limit reached')) {
+      // Show upgrade popup for free users who exceeded limit
+      showUsageLimitPopup(error.message);
+    } else if (error.message.includes('resource-exhausted') || error.message.includes('Usage limit exceeded')) {
+      // General usage limit reached
       showStatus('Usage limit reached. Please upgrade your plan or wait for reset.');
     } else if (error.message.includes('permission-denied')) {
       showStatus('Subscription required. Please upgrade to continue.');
+    } else if (error.message.includes('429') || error.message.includes('Too Many Requests')) {
+      // Handle rate limiting
+      showStatus('Too many requests. Please wait a moment and try again.');
     } else {
       showStatus('Error processing image: ' + error.message);
     }
@@ -1055,7 +1086,7 @@ async function syncSubscriptionToFirebase(user) {
       // For now, we'll default to 'pro' for paid users
       subscriptionType = 'pro';
       subscriptionStatus = 'active';
-    } else if (user.trialStarted && !user.trialEnded) {
+    } else if (user.trialStartedAt && !user.trialEnded) {
       subscriptionType = 'free';
       subscriptionStatus = 'trial';
     }
@@ -1115,14 +1146,14 @@ async function initializePaymentStatus() {
     
     // Check if we should show the trial activation message
     chrome.storage.local.get(['shouldShowTrialMessage'], (result) => {
-      if (result.shouldShowTrialMessage && user.trialStarted) {
+      if (result.shouldShowTrialMessage && user.trialStartedAt) {
         showTrialActivatedMessage();
         // Clear the flag so we don't show it again
         chrome.storage.local.remove('shouldShowTrialMessage');
       }
     });
     
-    return user.paid || user.trialStarted;
+    return user.paid || user.trialStartedAt;
   } catch (error) {
     console.error('Error checking payment status:', error);
     updatePaymentUI({ paid: false, trialStarted: false });
@@ -1134,7 +1165,7 @@ async function checkPaymentStatus() {
   try {
     const user = await extpay.getUser();
     updatePaymentUI(user);
-    return user.paid || user.trialStarted;
+    return user.paid || user.trialStartedAt;
   } catch (error) {
     console.error('Error checking payment status:', error);
     updatePaymentUI({ paid: false, trialStarted: false });
@@ -1144,12 +1175,12 @@ async function checkPaymentStatus() {
 
 function updatePaymentUI(user) {
   const paymentButton = document.getElementById('payment-button');
-  const trialButton = document.getElementById('trial-button');
+  const signInButton = document.getElementById('signin-button');
   const managePlanButton = document.getElementById('manage-plan-button');
   
   // Hide all buttons initially
   paymentButton.style.display = 'none';
-  trialButton.style.display = 'none';
+  signInButton.style.display = 'none';
   managePlanButton.style.display = 'none';
   
   // Update premium features list based on user status
@@ -1165,8 +1196,8 @@ function updatePaymentUI(user) {
     // Show change plan button for paid users
     managePlanButton.style.display = 'flex';
     
-  } else if (user.trialStarted) {
-    // User is on trial - hide trial button and show upgrade button
+  } else if (user.trialStartedAt && !user.paid) {
+    // User is on trial - hide sign-in button and show upgrade button
     paymentButton.innerHTML = `
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
@@ -1178,25 +1209,43 @@ function updatePaymentUI(user) {
     paymentButton.disabled = false;
     paymentButton.style.display = 'flex';
     
-    // Don't show trial button for users who already have trial
-    trialButton.style.display = 'none';
+    // Don't show sign-in button for users who already have trial
+    signInButton.style.display = 'none';
     
   } else {
-    // User hasn't paid or started trial
-    paymentButton.innerHTML = `
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M12 2L2 7l10 5 10-5-10-5z"/>
-        <path d="M2 17l10 5 10-5"/>
-        <path d="M2 12l10 5 10-5"/>
-      </svg>
-      Upgrade to Premium
-    `;
-    paymentButton.classList.remove('premium-active', 'trial-active');
-    paymentButton.disabled = false;
-    paymentButton.style.display = 'flex';
+    // Check if user is signed in (has userId or email)
+    const isSignedIn = user.userId || user.email;
     
-    // Show trial button for new users
-    trialButton.style.display = 'flex';
+    if (isSignedIn) {
+      // User is signed in but not premium - show upgrade button
+      paymentButton.innerHTML = `
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+          <path d="M2 17l10 5 10-5"/>
+          <path d="M2 12l10 5 10-5"/>
+        </svg>
+        Upgrade to Premium
+      `;
+      paymentButton.classList.remove('premium-active', 'trial-active');
+      paymentButton.disabled = false;
+      paymentButton.style.display = 'flex';
+    } else {
+      // User is not signed in - show sign-in button
+      signInButton.style.display = 'flex';
+      
+      // Also show upgrade button for context
+      paymentButton.innerHTML = `
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+          <path d="M2 17l10 5 10-5"/>
+          <path d="M2 12l10 5 10-5"/>
+        </svg>
+        Upgrade to Premium
+      `;
+      paymentButton.classList.remove('premium-active', 'trial-active');
+      paymentButton.disabled = false;
+      paymentButton.style.display = 'flex';
+    }
   }
 }
 
@@ -1205,10 +1254,20 @@ async function checkPremiumAccess() {
     const user = await extpay.getUser();
     console.log('ExtPay user status:', user);
     
-    const isPaid = user.paid || user.trialStarted;
-    console.log('Premium access check:', { isPaid, paid: user.paid, trialStarted: user.trialStarted });
+    // Check if user has paid subscription OR active trial
+    const isPaid = user.paid;
+    const hasActiveTrial = user.trialStartedAt && !user.paid; // Trial active if trialStartedAt exists and not paid
+    const hasAccess = isPaid || hasActiveTrial;
     
-    if (!isPaid) {
+    console.log('Premium access check:', { 
+      isPaid, 
+      hasActiveTrial, 
+      hasAccess,
+      paid: user.paid, 
+      trialStartedAt: user.trialStartedAt 
+    });
+    
+    if (!hasAccess) {
       showStatus('This feature requires premium access. Please upgrade or start a free trial.');
       return false;
     }
@@ -1233,7 +1292,7 @@ function updatePremiumFeaturesList(user) {
       <p>&#10003; Priority support</p>
       <p>&#10003; All premium features unlocked</p>
     `;
-  } else if (user.trialStarted) {
+  } else if (user.trialStartedAt) {
     // User is on trial
     premiumFeaturesList.innerHTML = `
       <p><strong>&#9733; Trial active!</strong></p>
@@ -1274,7 +1333,7 @@ async function handleExtPayEdgeCases() {
     }
     
     // Edge Case 3: Trial expired but not upgraded
-    if (user.trialStarted && user.trialEnded && !user.paid) {
+    if (user.trialStartedAt && user.trialEnded && !user.paid) {
       showExpiredTrialMessage();
       return user;
     }
@@ -1335,13 +1394,13 @@ async function initializePaymentStatusWithEdgeCases() {
   
   // Check if we should show the trial activation message
   chrome.storage.local.get(['shouldShowTrialMessage'], (result) => {
-    if (result.shouldShowTrialMessage && user.trialStarted && !user.trialEnded) {
+    if (result.shouldShowTrialMessage && user.trialStartedAt && !user.trialEnded) {
       showTrialActivatedMessage();
       chrome.storage.local.remove('shouldShowTrialMessage');
     }
   });
   
-  return user.paid || (user.trialStarted && !user.trialEnded);
+  return user.paid || (user.trialStartedAt && !user.trialEnded);
 }
 
 // Edge case notification functions
@@ -1462,4 +1521,245 @@ function showTrialActivatedMessage() {
       notification.remove();
     }
   }, 8000);
+}
+
+function showUsageLimitPopup(errorMessage) {
+  // Parse the error message to extract details
+  const usageMatch = errorMessage.match(/You've used (\d+)\/(\d+) weekly guesses/);
+  const resetMatch = errorMessage.match(/wait until ([^.]+) for reset/);
+  
+  const usedCount = usageMatch ? usageMatch[1] : '3';
+  const totalCount = usageMatch ? usageMatch[2] : '3';
+  const resetDate = resetMatch ? resetMatch[1] : 'next week';
+  
+  // Create modal overlay
+  const overlay = document.createElement('div');
+  overlay.className = 'usage-limit-overlay';
+  
+  // Create modal content
+  const modal = document.createElement('div');
+  modal.className = 'usage-limit-modal';
+  modal.innerHTML = `
+    <div class="modal-header">
+      <h3>Free Limit Reached!</h3>
+      <button class="modal-close">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="limit-info">
+        <div class="usage-circle">
+          <span class="usage-count">${usedCount}/${totalCount}</span>
+          <span class="usage-label">Weekly Guesses</span>
+        </div>
+        <p>You've used all your free weekly AI location guesses.</p>
+      </div>
+      
+      <div class="upgrade-options">
+        <h4>Choose your option:</h4>
+        
+        <div class="option-card premium-option">
+          <div class="option-header">
+            <span class="option-icon">⚡</span>
+            <span class="option-title">Upgrade to Premium</span>
+          </div>
+          <div class="option-benefits">
+            <p>✓ Unlimited AI guesses</p>
+            <p>✓ Advanced analysis</p>
+            <p>✓ Priority support</p>
+          </div>
+          <button class="upgrade-button" id="upgrade-from-limit">Upgrade Now</button>
+        </div>
+        
+        <div class="option-card wait-option">
+          <div class="option-header">
+            <span class="option-icon">⏰</span>
+            <span class="option-title">Wait for Reset</span>
+          </div>
+          <div class="option-details">
+            <p>Your free guesses will reset on:</p>
+            <strong>${resetDate}</strong>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+  
+  overlay.appendChild(modal);
+  document.body.appendChild(overlay);
+  
+  // Add event listeners
+  const closeBtn = modal.querySelector('.modal-close');
+  const upgradeBtn = modal.querySelector('#upgrade-from-limit');
+  
+  const closeModal = () => {
+    if (overlay && overlay.parentNode) {
+      overlay.parentNode.removeChild(overlay);
+    }
+  };
+  
+  closeBtn.addEventListener('click', closeModal);
+  overlay.addEventListener('click', (e) => {
+    if (e.target === overlay) closeModal();
+  });
+  
+  upgradeBtn.addEventListener('click', async () => {
+    closeModal();
+    // Trigger ExtPay upgrade flow
+    try {
+      await extpay.openPaymentPage();
+    } catch (error) {
+      console.error('Error opening payment page:', error);
+      showStatus('Error opening payment page. Please try again.');
+    }
+  });
+  
+  // Close on Escape key
+  const handleEscape = (e) => {
+    if (e.key === 'Escape') {
+      closeModal();
+      document.removeEventListener('keydown', handleEscape);
+    }
+  };
+  document.addEventListener('keydown', handleEscape);
+}
+
+function showSignInPrompt() {
+  // Create modal overlay
+  const overlay = document.createElement('div');
+  overlay.className = 'signin-prompt-overlay';
+  
+  // Create modal content
+  const modal = document.createElement('div');
+  modal.className = 'signin-prompt-modal';
+  modal.innerHTML = `
+    <div class="modal-header">
+      <h3>Sign In Required</h3>
+      <button class="modal-close">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="signin-info">
+        <div class="signin-icon">
+          ●
+        </div>
+        <h4>Get Started with Free AI Guesses!</h4>
+        <p>Start your free trial or log in to access geolocation guessing with our AI assistant.</p>
+        
+        <div class="benefits-list">
+          <div class="benefit-item">
+            <span class="benefit-icon">★</span>
+            <span>3 free weekly AI guesses</span>
+          </div>
+          <div class="benefit-item">
+            <span class="benefit-icon">●</span>
+            <span>High-accuracy location analysis</span>
+          </div>
+          <div class="benefit-item">
+            <span class="benefit-icon">■</span>
+            <span>Usage tracking & statistics</span>
+          </div>
+          <div class="benefit-item">
+            <span class="benefit-icon">▲</span>
+            <span>Upgrade anytime for unlimited</span>
+          </div>
+        </div>
+      </div>
+      
+      <div class="signin-actions">
+        <div class="auth-buttons">
+          <button class="signup-button" id="signup-with-extpay">
+            <span class="auth-icon">+</span>
+            Start Free Trial
+          </button>
+          <button class="login-button" id="login-with-extpay">
+            <span class="auth-icon">→</span>
+            Log In
+          </button>
+        </div>
+        <p class="signin-note">
+          <small>Secure authentication powered by ExtPay • No spam, ever</small>
+        </p>
+      </div>
+    </div>
+  `;
+  
+  overlay.appendChild(modal);
+  document.body.appendChild(overlay);
+  
+  // Add event listeners
+  const closeBtn = modal.querySelector('.modal-close');
+  const signUpBtn = modal.querySelector('#signup-with-extpay');
+  const logInBtn = modal.querySelector('#login-with-extpay');
+  
+  const closeModal = () => {
+    if (overlay && overlay.parentNode) {
+      overlay.parentNode.removeChild(overlay);
+    }
+  };
+  
+  closeBtn.addEventListener('click', closeModal);
+  overlay.addEventListener('click', (e) => {
+    if (e.target === overlay) closeModal();
+  });
+  
+  // Handle authentication after success
+  const handleAuthSuccess = async (actionType) => {
+    setTimeout(async () => {
+      try {
+        const user = await extpay.getUser();
+        if (user.userId || user.email) {
+          showStatus(`Successfully ${actionType}! You now have access to free guesses.`);
+          // Sync user to Firebase
+          await syncSubscriptionToFirebase(user);
+          // Refresh UI
+          await checkPaymentStatus();
+          // Load usage info
+          const extpayUserId = user.userId || user.email;
+          await loadUsageInformation(extpayUserId);
+        }
+      } catch (error) {
+        console.error(`Error after ${actionType}:`, error);
+        showStatus(`${actionType} successful! Please try your guess again.`);
+      }
+    }, 1000);
+  };
+  
+  // Sign Up button
+  signUpBtn.addEventListener('click', async () => {
+    try {
+      closeModal();
+      showStatus('Opening free trial page...');
+      
+      // Open ExtPay trial page for new users (free trial sign-up)
+      await extpay.openTrialPage();
+      await handleAuthSuccess('signed up for free trial');
+      
+    } catch (error) {
+      console.error('Error opening free trial page:', error);
+      showStatus('Error opening free trial page. Please try again.');
+    }
+  });
+  
+  // Log In button
+  logInBtn.addEventListener('click', async () => {
+    try {
+      closeModal();
+      showStatus('Opening log-in page...');
+      
+      // Open ExtPay login page for existing users
+      await extpay.openLoginPage();
+      await handleAuthSuccess('log-in');
+      
+    } catch (error) {
+      console.error('Error opening log-in page:', error);
+      showStatus('Error opening log-in page. Please try again.');
+    }
+  });
+  
+  // Close on Escape key
+  const handleEscape = (e) => {
+    if (e.key === 'Escape') {
+      closeModal();
+      document.removeEventListener('keydown', handleEscape);
+    }
+  };
+  document.addEventListener('keydown', handleEscape);
 } 

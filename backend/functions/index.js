@@ -131,16 +131,38 @@ exports.processGeolocation = onCall(async (request) => {
 
     const userData = userDoc.data();
 
-    // Check if user has valid subscription or trial
-    if (!hasValidAccess(userData)) {
-      throw new HttpsError("permission-denied", "Subscription required");
-    }
-
-    // Check usage limits
+    // Check usage limits first (includes free users)
     const usageCheck = await checkUsageLimit(userData);
     if (!usageCheck.allowed) {
-      throw new HttpsError("resource-exhausted",
-          `Usage limit exceeded. ${usageCheck.message}`);
+      // For free users, provide upgrade options in the error message
+      const subscriptionType = userData.subscriptionType || "free";
+      if (subscriptionType === "free") {
+        // Handle Firestore timestamp properly
+        let resetDate = 'next week';
+        if (userData.usage?.resetDate) {
+          try {
+            // Check if it's a Firestore timestamp object
+            if (userData.usage.resetDate._seconds) {
+              resetDate = new Date(userData.usage.resetDate._seconds * 1000).toLocaleDateString();
+            } else {
+              resetDate = new Date(userData.usage.resetDate).toLocaleDateString();
+            }
+          } catch (e) {
+            console.error('Error parsing reset date:', e);
+            resetDate = 'next week';
+          }
+        }
+        throw new HttpsError("resource-exhausted", 
+          `Free limit reached! You've used ${userData.usage?.current || 0}/3 weekly guesses. Upgrade for unlimited guesses or wait until ${resetDate} for reset.`);
+      } else {
+        throw new HttpsError("resource-exhausted", usageCheck.message);
+      }
+    }
+
+    // For paid users, ensure they have valid subscription
+    const subscriptionType = userData.subscriptionType || "free";
+    if (subscriptionType !== "free" && !hasValidAccess(userData)) {
+      throw new HttpsError("permission-denied", "Active subscription required");
     }
 
     // Get the OpenAI API key from Secret Manager
@@ -302,11 +324,11 @@ function calculateImageTokenCost(imageWidth, imageHeight, detail = "low") {
   // Cap at maximum of 1536 patches
   const imageTokens = Math.min(finalPatches, 1536);
   
-  // D. Apply GPT-5-mini multiplier (1.62)
-  const multiplier = 1.62;
+  // D. Apply GPT-5-nano multiplier (2.46)
+  const multiplier = 2.46;
   const totalTokens = Math.round(imageTokens * multiplier);
   
-  console.log('GPT-5-mini token calculation:', {
+  console.log('GPT-5-nano token calculation:', {
     imageWidth,
     imageHeight,
     rawPatches,
@@ -380,7 +402,7 @@ async function processWithOpenAI(imageData, apiKey) {
 Provide your best guess for the exact coordinates and location name in this JSON format:
 {"coordinates": {"lat": 40.348600, "lng": -74.659300}, "location": "Nassau Hall Princeton, New Jersey, United States"}
 
-Even if you're not 100% certain, make your best educated guess based on the visual evidence.`,
+Even if you're not 100% certain, make your best educated guess based on the visual evidence. ALWAYS response with JSON format or some location, no matter what.`,
             },
             {
               type: "image_url",
@@ -414,9 +436,9 @@ Even if you're not 100% certain, make your best educated guess based on the visu
       contentLength: responseText?.length
     });
     
-    // GPT-5-mini pricing: Input $0.25 per 1M tokens, Output $2.00 per 1M tokens
-    const inputCost = (imageTokens * 0.25) / 1000000;
-    const outputCost = (textTokens * 2.00) / 1000000;
+    // GPT-5-nano pricing: Input $0.15 per 1M tokens, Output $1.00 per 1M tokens  
+    const inputCost = (imageTokens * 0.15) / 1000000;
+    const outputCost = (textTokens * 1.00) / 1000000;
     const totalCost = inputCost + outputCost;
     
     console.log('Token breakdown:', {
