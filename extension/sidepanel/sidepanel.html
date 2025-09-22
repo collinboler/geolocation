@@ -89,17 +89,6 @@
       </div>
       
       <div class="settings-content">
-        <!-- Main Settings Section -->
-        <div class="settings-section">
-          <h3>Display Settings</h3>
-          <div class="setting-item">
-            <label for="dark-mode-switch">Dark Mode</label>
-            <label class="switch">
-              <input type="checkbox" id="dark-mode-switch">
-              <span class="slider round"></span>
-            </label>
-          </div>
-        </div>
 
         <!-- Advanced Settings Section -->
         <div class="settings-section">
@@ -115,7 +104,7 @@
             <div class="setting-item">
               <label for="show-coords-switch">Show Coordinates</label>
               <label class="switch">
-                <input type="checkbox" id="show-coords-switch">
+                <input type="checkbox" id="show-coords-switch" checked>
                 <span class="slider round"></span>
               </label>
             </div>
@@ -126,45 +115,36 @@
                 <span class="slider round"></span>
               </label>
             </div>
-            <div class="setting-item">
-              <a href="https://platform.openai.com/api-keys" target="_blank" class="api-link">Get OpenAI Key</a>
-              <div class="input-group">
-                <input type="password" id="api-key-input" placeholder="Enter OpenAI API Key" />
-                <button id="save-api-key-button">Save</button>
-              </div>
-            </div>
           </div>
         </div>
         
-        <div class="pricing-info">
-          <h3>Last Analysis Cost</h3>
-          <div class="pricing-details">
-            <div class="pricing-item">
-              <span class="pricing-label">Tokens used:</span>
-              <span class="pricing-value" id="tokens-used">--</span>
+        <div class="payment-section">
+          <div class="upgrade-card">
+            <div class="upgrade-header">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" class="upgrade-icon">
+                <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+              </svg>
+              <h3>Upgrade to Pro</h3>
             </div>
-            <div class="pricing-item">
-              <span class="pricing-label">Cost:</span>
-              <span class="pricing-value" id="analysis-cost">$0.00</span>
-            </div>
-            <div class="pricing-item">
-              <span class="pricing-label">Total session cost:</span>
-              <span class="pricing-value" id="session-cost">$0.00</span>
-            </div>
-            <div class="pricing-note">
-              * Based on GPT-4o pricing: $2.50 per 1M input tokens
-            </div>
-            <button id="reset-session-cost" class="reset-cost-button">Reset Session Cost</button>
-          </div>
-          
-          <div class="payment-section">
-            <h3>Premium Features</h3>
-            <div class="premium-features-list">
-              <p><strong>&#9733; 3 free guesses weekly!</strong></p>
-              <p>&#10003; Unlimited AI location guessing</p>
-              <p>&#10003; Advanced geolocation analysis</p>
-              <p>&#10003; Priority support</p>
-              <p>&#10003; Future premium features</p>
+            <div class="upgrade-features">
+              <div class="feature-item">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" class="feature-check">
+                  <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
+                </svg>
+                <span>1000 Guesses / Month</span>
+              </div>
+              <div class="feature-item">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" class="feature-check">
+                  <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
+                </svg>
+                <span>Advanced Analysis</span>
+              </div>
+              <div class="feature-item">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" class="feature-check">
+                  <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
+                </svg>
+                <span>Priority Support</span>
+              </div>
             </div>
             <button id="payment-button" class="payment-button">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -174,6 +154,7 @@
               </svg>
               Upgrade to Premium
             </button>
+          </div>
             <button id="signin-button" class="signin-button-main" style="display: none;">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M9 12l2 2 4-4"/>

@@ -121,8 +121,6 @@ document.addEventListener('DOMContentLoaded', () => {
   const backButton = document.getElementById('back-button');
   const mainPage = document.getElementById('main-page');
   const settingsPage = document.getElementById('settings-page');
-  const saveApiKeyButton = document.getElementById('save-api-key-button');
-  const apiKeyInput = document.getElementById('api-key-input');
   const statusDiv = document.getElementById('status');
   const locationWordsDiv = document.getElementById('location-words');
   const coordsDiv = document.getElementById('coords');
@@ -131,8 +129,6 @@ document.addEventListener('DOMContentLoaded', () => {
   const zoomOutButton = document.getElementById('zoom-out');
   const showCoordsSwitch = document.getElementById('show-coords-switch');
   const showMapSwitch = document.getElementById('show-map-switch');
-  const darkModeSwitch = document.getElementById('dark-mode-switch');
-  const resetSessionCostButton = document.getElementById('reset-session-cost');
   const advancedDropdownToggle = document.getElementById('advanced-dropdown-toggle');
   const advancedSettingsDropdown = document.getElementById('advanced-settings-dropdown');
   const paymentButton = document.getElementById('payment-button');
@@ -200,10 +196,7 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // Load settings from storage
-  chrome.storage.local.get(['openaiApiKey', 'zoomLevel', 'showCoords', 'showMap', 'darkMode', 'sessionCost'], (result) => {
-    if (result.openaiApiKey) {
-      apiKeyInput.value = result.openaiApiKey;
-    }
+  chrome.storage.local.get(['zoomLevel', 'showCoords', 'showMap'], (result) => {
     if (result.zoomLevel !== undefined) {
       zoomLevel = result.zoomLevel;
     }
@@ -218,20 +211,9 @@ document.addEventListener('DOMContentLoaded', () => {
       showCoordsSwitch.checked = result.showCoords;
       toggleCoordsVisibility(result.showCoords);
     } else {
-      showCoordsSwitch.checked = false;
-      toggleCoordsVisibility(false);
-    }
-    if (result.darkMode !== undefined) {
-      darkModeSwitch.checked = result.darkMode;
-      toggleDarkMode(result.darkMode);
-    } else {
-      darkModeSwitch.checked = false;
-      toggleDarkMode(false);
-    }
-    
-    // Load session cost
-    if (result.sessionCost !== undefined) {
-      updateSessionCost(result.sessionCost);
+      // Auto-select show coordinates to be on
+      showCoordsSwitch.checked = true;
+      toggleCoordsVisibility(true);
     }
   });
 
@@ -263,17 +245,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // Save API key
-  saveApiKeyButton.addEventListener('click', () => {
-    const apiKey = apiKeyInput.value.trim();
-    if (apiKey) {
-      chrome.storage.local.set({ openaiApiKey: apiKey }, () => {
-        showStatus('API Key saved successfully!');
-      });
-    } else {
-      showStatus('Please enter a valid API Key.');
-    }
-  });
 
   // Toggle map display
   showMapSwitch.addEventListener('change', () => {
@@ -293,14 +264,6 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
-  // Toggle dark mode
-  darkModeSwitch.addEventListener('change', () => {
-    const darkMode = darkModeSwitch.checked;
-    chrome.storage.local.set({ darkMode: darkMode }, () => {
-      toggleDarkMode(darkMode);
-      showStatus(darkMode ? 'Dark mode enabled' : 'Dark mode disabled');
-    });
-  });
 
   // Zoom controls are now handled by Google Maps iframe
   // Removed custom zoom button event listeners
@@ -338,13 +301,6 @@ document.addEventListener('DOMContentLoaded', () => {
     showMainPage();
   });
 
-  // Reset session cost button
-  resetSessionCostButton.addEventListener('click', () => {
-    chrome.storage.local.set({ sessionCost: 0 }, () => {
-      updateSessionCost(0);
-      showStatus('Session cost reset to $0.00');
-    });
-  });
 
   // Advanced Settings dropdown toggle
   advancedDropdownToggle.addEventListener('click', () => {
@@ -576,15 +532,6 @@ function toggleCoordsVisibility(showCoords) {
   }
 }
 
-// Function to toggle dark mode
-function toggleDarkMode(darkMode) {
-  const body = document.body;
-  if (darkMode) {
-    body.classList.add('dark-mode');
-  } else {
-    body.classList.remove('dark-mode');
-  }
-}
 
 // Function to toggle map visibility
 function toggleMapVisibility(showMap) {
@@ -787,8 +734,6 @@ async function processImage(dataUrl) {
     console.log('Firebase function response data:', result);
     console.log('Usage from response:', result.usage);
     
-    // Update cost display from Firebase response
-    updateCostDisplay(result.result.tokensUsed, result.result.cost);
     
     // Update usage display immediately from response
     updateUsageDisplay(result.usage);
@@ -909,25 +854,6 @@ function updateZoomLevel(zoomLevel) {
   });
 }
 
-function updateCostDisplay(tokensUsed, analysisCost) {
-  // Update last analysis cost
-  document.getElementById('tokens-used').textContent = tokensUsed.toLocaleString();
-  document.getElementById('analysis-cost').textContent = `$${analysisCost.toFixed(6)}`;
-  
-  // Update session total
-  chrome.storage.local.get(['sessionCost'], (result) => {
-    const currentSessionCost = result.sessionCost || 0;
-    const newSessionCost = currentSessionCost + analysisCost;
-    
-    chrome.storage.local.set({ sessionCost: newSessionCost }, () => {
-      updateSessionCost(newSessionCost);
-    });
-  });
-}
-
-function updateSessionCost(sessionCost) {
-  document.getElementById('session-cost').textContent = `$${sessionCost.toFixed(6)}`;
-}
 
 // Firebase user initialization
 async function initializeFirebaseUser() {
@@ -1202,7 +1128,7 @@ function updatePaymentUI(user) {
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
       </svg>
-      🔥 Trial Active - Upgrade Now
+      Upgrade to Pro
     `;
     paymentButton.classList.remove('premium-active');
     paymentButton.classList.add('trial-active');
@@ -1563,7 +1489,7 @@ function showUsageLimitPopup(errorMessage) {
           <span class="usage-count">${usedCount}/${totalCount}</span>
           <span class="usage-label">Weekly Guesses</span>
         </div>
-        <p>You've used all your free weekly AI location guesses.</p>
+        <p>You've used all your free weekly Guesses.</p>
       </div>
       
       <div class="upgrade-options">
@@ -1583,17 +1509,17 @@ function showUsageLimitPopup(errorMessage) {
               <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
                 <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
               </svg>
-            </span> Unlimited AI guesses</p>
+            </span> 1,000 Guesses / Month</p>
             <p><span class="check-icon">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
                 <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
               </svg>
-            </span> Advanced analysis</p>
+            </span> Advanced Analysis</p>
             <p><span class="check-icon">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
                 <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
               </svg>
-            </span> Priority support</p>
+            </span> Priority Support</p>
           </div>
           <button class="upgrade-button" id="upgrade-from-limit">Upgrade Now</button>
         </div>
