@@ -549,55 +549,6 @@ input:checked + .slider:before {
     margin-bottom: 0;
 }
 
-/* Dropdown styles */
-.settings-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 16px;
-    padding-bottom: 8px;
-    border-bottom: 1px solid #e5e7eb;
-    cursor: pointer;
-}
-
-.settings-header h3 {
-    margin: 0;
-    padding-bottom: 0;
-    border-bottom: none;
-}
-
-.dropdown-toggle {
-    background: none;
-    border: none;
-    cursor: pointer;
-    padding: 4px;
-    border-radius: 4px;
-    transition: transform 0.3s ease, background-color 0.2s;
-    color: #666;
-}
-
-.dropdown-toggle:hover {
-    background-color: rgba(0, 0, 0, 0.1);
-    color: #333;
-}
-
-.dropdown-toggle svg {
-    transition: transform 0.3s ease;
-}
-
-.dropdown-toggle.expanded svg {
-    transform: rotate(180deg);
-}
-
-.settings-dropdown {
-    max-height: 0;
-    overflow: hidden;
-    transition: max-height 0.15s ease-in-out;
-}
-
-.settings-dropdown.expanded {
-    max-height: 500px;
-}
 
 .pricing-info {
     margin-top: 24px;
@@ -796,23 +747,6 @@ input:checked + .slider:before {
         background-color: #1a1a1a;
     }
     
-    /* Dark mode dropdown styles */
-    .settings-header {
-        border-bottom-color: #4b5563;
-    }
-    
-    .settings-header h3 {
-        color: #e5e5e5;
-    }
-    
-    .dropdown-toggle {
-        color: #d1d5db;
-    }
-    
-    .dropdown-toggle:hover {
-        background-color: rgba(255, 255, 255, 0.1);
-        color: #fff;
-    }
 }
 
 /* Upgrade Card Styles */
@@ -849,6 +783,18 @@ input:checked + .slider:before {
 .upgrade-icon {
     color: #ffd700;
     filter: drop-shadow(0 2px 4px rgba(255, 215, 0, 0.3));
+    transition: all 0.3s ease;
+}
+
+.upgrade-icon.trial-active {
+    color: #ff6b35;
+    filter: drop-shadow(0 2px 4px rgba(255, 107, 53, 0.3));
+}
+
+/* Pro mode activated styles - keep the same beautiful background */
+.upgrade-card.pro-active .upgrade-icon {
+    color: #4ade80;
+    filter: drop-shadow(0 2px 4px rgba(74, 222, 128, 0.4));
 }
 
 .upgrade-header h3 {
@@ -892,7 +838,7 @@ input:checked + .slider:before {
 
 /* Payment button styles */
 .payment-button {
-    background: linear-gradient(135deg, #ff6b35, #ff8c00);
+    background: linear-gradient(135deg, #10b981, #059669);
     color: white;
     border: none;
     padding: 16px 24px;
@@ -905,7 +851,7 @@ input:checked + .slider:before {
     align-items: center;
     gap: 8px;
     justify-content: center;
-    box-shadow: 0 4px 16px rgba(255, 107, 53, 0.4);
+    box-shadow: 0 4px 16px rgba(16, 185, 129, 0.4);
     width: 100%;
     margin-top: 8px;
     text-transform: uppercase;
@@ -930,8 +876,8 @@ input:checked + .slider:before {
 }
 
 .payment-button:hover {
-    background: linear-gradient(135deg, #ff8c00, #ff6b35);
-    box-shadow: 0 6px 15px rgba(255, 140, 0, 0.4);
+    background: linear-gradient(135deg, #059669, #047857);
+    box-shadow: 0 6px 15px rgba(5, 150, 105, 0.4);
     transform: translateY(-1px);
 }
 
@@ -953,11 +899,11 @@ input:checked + .slider:before {
 }
 
 body.dark-mode .payment-button {
-    box-shadow: 0 4px 12px rgba(255, 107, 53, 0.2);
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2);
 }
 
 body.dark-mode .payment-button:hover {
-    box-shadow: 0 6px 15px rgba(255, 140, 0, 0.3);
+    box-shadow: 0 6px 15px rgba(5, 150, 105, 0.3);
 }
 
 body.dark-mode .payment-button.premium-active:hover {
@@ -980,6 +926,12 @@ body.dark-mode .upgrade-header h3 {
 
 body.dark-mode .feature-item span {
     color: rgba(255, 255, 255, 0.9);
+}
+
+/* Dark mode pro active styles - keep same background, just update icon */
+body.dark-mode .upgrade-card.pro-active .upgrade-icon {
+    color: #4ade80;
+    filter: drop-shadow(0 2px 4px rgba(74, 222, 128, 0.4));
 }
 
 .premium-features-list {
@@ -1696,6 +1648,13 @@ body.dark-mode .option-details strong {
     display: block;
 }
 
+.signin-logo {
+    width: 64px;
+    height: 64px;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
 .signin-info h4 {
     margin: 0 0 12px 0;
     font-size: 24px;
@@ -1736,6 +1695,14 @@ body.dark-mode .option-details strong {
 .benefit-icon {
     font-size: 18px;
     flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    color: #667eea;
+}
+
+.benefit-icon svg {
+    width: 16px;
+    height: 16px;
 }
 
 .benefit-item span:last-child {
@@ -1844,6 +1811,14 @@ body.dark-mode .signin-note small {
     color: #6b7280;
 }
 
+body.dark-mode .signin-logo {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+body.dark-mode .benefit-icon {
+    color: #818cf8;
+}
+
 body.dark-mode .signup-button {
     box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2);
 }
@@ -1862,4 +1837,69 @@ body.dark-mode .login-button:hover {
 
 body.dark-mode .check-icon svg {
     color: rgba(255, 255, 255, 0.8);
+}
+
+/* Auth Buttons Container for Settings */
+.auth-buttons-container {
+    display: flex;
+    gap: 12px;
+    width: 100%;
+    margin-top: 8px;
+}
+
+.signup-settings-button, .login-settings-button {
+    flex: 1;
+    border: none;
+    color: white;
+    padding: 14px 20px;
+    border-radius: 10px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.signup-settings-button {
+    background: linear-gradient(135deg, #10b981, #059669);
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+}
+
+.signup-settings-button:hover {
+    background: linear-gradient(135deg, #059669, #047857);
+    box-shadow: 0 6px 15px rgba(5, 150, 105, 0.4);
+    transform: translateY(-1px);
+}
+
+.login-settings-button {
+    background: linear-gradient(135deg, #4f46e5, #7c3aed);
+    box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);
+}
+
+.login-settings-button:hover {
+    background: linear-gradient(135deg, #7c3aed, #8b5cf6);
+    box-shadow: 0 6px 15px rgba(124, 58, 237, 0.4);
+    transform: translateY(-1px);
+}
+
+/* Dark mode styles for auth buttons */
+body.dark-mode .signup-settings-button {
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2);
+}
+
+body.dark-mode .signup-settings-button:hover {
+    box-shadow: 0 6px 15px rgba(5, 150, 105, 0.3);
+}
+
+body.dark-mode .login-settings-button {
+    box-shadow: 0 4px 12px rgba(79, 70, 229, 0.2);
+}
+
+body.dark-mode .login-settings-button:hover {
+    box-shadow: 0 6px 15px rgba(124, 58, 237, 0.3);
 } 

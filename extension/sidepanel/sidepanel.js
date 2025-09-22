@@ -127,10 +127,6 @@ document.addEventListener('DOMContentLoaded', () => {
   const mapIframe = document.getElementById('map-iframe');
   const zoomInButton = document.getElementById('zoom-in');
   const zoomOutButton = document.getElementById('zoom-out');
-  const showCoordsSwitch = document.getElementById('show-coords-switch');
-  const showMapSwitch = document.getElementById('show-map-switch');
-  const advancedDropdownToggle = document.getElementById('advanced-dropdown-toggle');
-  const advancedSettingsDropdown = document.getElementById('advanced-settings-dropdown');
   const paymentButton = document.getElementById('payment-button');
   const signInButton = document.getElementById('signin-button');
   const managePlanButton = document.getElementById('manage-plan-button');
@@ -196,26 +192,15 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // Load settings from storage
-  chrome.storage.local.get(['zoomLevel', 'showCoords', 'showMap'], (result) => {
+  chrome.storage.local.get(['zoomLevel'], (result) => {
     if (result.zoomLevel !== undefined) {
       zoomLevel = result.zoomLevel;
     }
-    if (result.showMap !== undefined) {
-      showMapSwitch.checked = result.showMap;
-      toggleMapVisibility(result.showMap);
-    } else {
-      showMapSwitch.checked = true;
-      toggleMapVisibility(true);
-    }
-    if (result.showCoords !== undefined) {
-      showCoordsSwitch.checked = result.showCoords;
-      toggleCoordsVisibility(result.showCoords);
-    } else {
-      // Auto-select show coordinates to be on
-      showCoordsSwitch.checked = true;
-      toggleCoordsVisibility(true);
-    }
   });
+  
+  // Always show coordinates and map - no longer user configurable
+  toggleCoordsVisibility(true);
+  toggleMapVisibility(true);
 
   // Load the last generated location words and coordinates from storage
   chrome.storage.local.get(['locationWords', 'coords'], (result) => {
@@ -246,23 +231,6 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
 
-  // Toggle map display
-  showMapSwitch.addEventListener('change', () => {
-    const showMap = showMapSwitch.checked;
-    chrome.storage.local.set({ showMap: showMap }, () => {
-      toggleMapVisibility(showMap);
-      showStatus(showMap ? 'Map display enabled' : 'Map display disabled');
-    });
-  });
-
-  // Toggle coordinates display
-  showCoordsSwitch.addEventListener('change', () => {
-    const showCoords = showCoordsSwitch.checked;
-    chrome.storage.local.set({ showCoords: showCoords }, () => {
-      toggleCoordsVisibility(showCoords);
-      showStatus(showCoords ? 'Coordinates display enabled' : 'Coordinates display disabled');
-    });
-  });
 
 
   // Zoom controls are now handled by Google Maps iframe
@@ -302,28 +270,10 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
 
-  // Advanced Settings dropdown toggle
-  advancedDropdownToggle.addEventListener('click', () => {
-    const isExpanded = advancedSettingsDropdown.classList.contains('expanded');
-    
-    if (isExpanded) {
-      advancedSettingsDropdown.classList.remove('expanded');
-      advancedDropdownToggle.classList.remove('expanded');
-    } else {
-      advancedSettingsDropdown.classList.add('expanded');
-      advancedDropdownToggle.classList.add('expanded');
-    }
-  });
-
-  // Also allow clicking on the header to toggle
-  document.getElementById('advanced-settings-header').addEventListener('click', (e) => {
-    if (e.target !== advancedDropdownToggle) {
-      advancedDropdownToggle.click();
-    }
-  });
 
   // Payment button event listener
   paymentButton.addEventListener('click', () => {
+    // For all states (Upgrade to Pro, Manage Plan), open ExtPay page
     extpay.openPaymentPage();
   });
 
@@ -331,6 +281,22 @@ document.addEventListener('DOMContentLoaded', () => {
   signInButton.addEventListener('click', () => {
     showSignInPrompt();
   });
+
+  // Auth buttons event listeners
+  const signupSettingsButton = document.getElementById('signup-settings-button');
+  const loginSettingsButton = document.getElementById('login-settings-button');
+
+  if (signupSettingsButton) {
+    signupSettingsButton.addEventListener('click', () => {
+      extpay.openTrialPage();
+    });
+  }
+
+  if (loginSettingsButton) {
+    loginSettingsButton.addEventListener('click', () => {
+      extpay.openLoginPage();
+    });
+  }
 
   // Manage plan button event listener
   managePlanButton.addEventListener('click', () => {
@@ -918,58 +884,77 @@ async function loadUsageInformation(extpayUserId) {
 }
 
 // Update usage display in UI
-function updateUsageDisplay(usage) {
+async function updateUsageDisplay(usage) {
   console.log('updateUsageDisplay called with:', usage);
   
-  // Find or create usage section
-  let usageSection = document.getElementById('usage-section');
-  
-  if (!usageSection) {
-    // Create the usage section
-    usageSection = document.createElement('div');
-    usageSection.id = 'usage-section';
-    usageSection.className = 'settings-section';
-    usageSection.innerHTML = `
-      <h3>Usage Statistics</h3>
-      <div class="usage-info">
-        <div class="usage-item">
-          <span class="usage-label">Current usage:</span>
-          <span class="usage-value" id="current-usage">0</span>
-        </div>
-        <div class="usage-item">
-          <span class="usage-label">Plan limit:</span>
-          <span class="usage-value" id="usage-limit">0</span>
-        </div>
-        <div class="usage-item">
-          <span class="usage-label">Resets on:</span>
-          <span class="usage-value" id="usage-reset">-</span>
-        </div>
-        <div class="usage-item">
-          <span class="usage-label">Plan type:</span>
-          <span class="usage-value" id="plan-type">Free</span>
-        </div>
-      </div>
-    `;
+  // Check if user is authenticated (has trial or paid subscription)
+  try {
+    const user = await extpay.getUser();
+    const isAuthenticated = user.paid || user.trialStartedAt;
     
-    // Try multiple insertion strategies
-    const settingsPage = document.getElementById('settings-page');
-    if (settingsPage) {
-      const premiumSection = settingsPage.querySelector('.payment-section');
-      if (premiumSection && premiumSection.parentNode === settingsPage) {
-        // Insert before premium section if found
-        settingsPage.insertBefore(usageSection, premiumSection);
-      } else {
-        // Fallback: append to settings page
-        settingsPage.appendChild(usageSection);
+    // Find existing usage section
+    let usageSection = document.getElementById('usage-section');
+    
+    if (!isAuthenticated) {
+      // Hide usage section for unauthenticated users
+      if (usageSection) {
+        usageSection.style.display = 'none';
       }
-    } else {
-      // Fallback: add to main page if settings page not found
-      const mainContent = document.querySelector('.sidepanel-container');
-      if (mainContent) {
-        mainContent.appendChild(usageSection);
+      return;
+    }
+    
+    // Show usage section for authenticated users
+    if (!usageSection) {
+      // Create the usage section
+      usageSection = document.createElement('div');
+      usageSection.id = 'usage-section';
+      usageSection.className = 'settings-section';
+      usageSection.innerHTML = `
+        <h3>Usage Statistics</h3>
+        <div class="usage-info">
+          <div class="usage-item">
+            <span class="usage-label">Current usage:</span>
+            <span class="usage-value" id="current-usage">0</span>
+          </div>
+          <div class="usage-item">
+            <span class="usage-label">Plan limit:</span>
+            <span class="usage-value" id="usage-limit">0</span>
+          </div>
+          <div class="usage-item">
+            <span class="usage-label">Resets on:</span>
+            <span class="usage-value" id="usage-reset">-</span>
+          </div>
+          <div class="usage-item">
+            <span class="usage-label">Plan type:</span>
+            <span class="usage-value" id="plan-type">Free</span>
+          </div>
+        </div>
+      `;
+    
+      // Try multiple insertion strategies
+      const settingsPage = document.getElementById('settings-page');
+      if (settingsPage) {
+        const premiumSection = settingsPage.querySelector('.payment-section');
+        if (premiumSection && premiumSection.parentNode === settingsPage) {
+          // Insert before premium section if found
+          settingsPage.insertBefore(usageSection, premiumSection);
+        } else {
+          // Fallback: append to settings page
+          settingsPage.appendChild(usageSection);
+        }
+      } else {
+        // Fallback: add to main page if settings page not found
+        const mainContent = document.querySelector('.sidepanel-container');
+        if (mainContent) {
+          mainContent.appendChild(usageSection);
+        }
       }
     }
-  }
+    
+    // Make sure usage section is visible for authenticated users
+    if (usageSection) {
+      usageSection.style.display = 'block';
+    }
   
   // Update values safely
   const currentUsageEl = document.getElementById('current-usage');
@@ -993,8 +978,16 @@ function updateUsageDisplay(usage) {
       usageResetEl.textContent = '-';
     }
   }
-  if (planTypeEl) {
-    planTypeEl.textContent = capitalizeFirst(usage.subscriptionType || 'free');
+    if (planTypeEl) {
+      planTypeEl.textContent = capitalizeFirst(usage.subscriptionType || 'free');
+    }
+  } catch (error) {
+    console.error('Error updating usage display:', error);
+    // Hide usage section on error
+    const usageSection = document.getElementById('usage-section');
+    if (usageSection) {
+      usageSection.style.display = 'none';
+    }
   }
 }
 
@@ -1103,24 +1096,38 @@ function updatePaymentUI(user) {
   const paymentButton = document.getElementById('payment-button');
   const signInButton = document.getElementById('signin-button');
   const managePlanButton = document.getElementById('manage-plan-button');
+  const authButtonsContainer = document.getElementById('auth-buttons-container');
   
   // Hide all buttons initially
   paymentButton.style.display = 'none';
   signInButton.style.display = 'none';
   managePlanButton.style.display = 'none';
+  if (authButtonsContainer) authButtonsContainer.style.display = 'none';
   
   // Update premium features list based on user status
   updatePremiumFeaturesList(user);
   
+  // Update upgrade card header based on user status
+  updateUpgradeCardHeader(user);
+  
+  // Update upgrade card features based on user status
+  updateUpgradeCardFeatures(user);
+  
   if (user.paid) {
-    // User has paid subscription
-    paymentButton.textContent = 'Pro Mode Activated';
+    // User has paid subscription - make button clickable to manage plan
+    paymentButton.innerHTML = `
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="3"/>
+        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+      </svg>
+      Manage Plan
+    `;
     paymentButton.classList.add('premium-active');
-    paymentButton.disabled = true;
+    paymentButton.disabled = false;
     paymentButton.style.display = 'flex';
     
-    // Show change plan button for paid users
-    managePlanButton.style.display = 'flex';
+    // Hide separate manage plan button since it's now integrated
+    managePlanButton.style.display = 'none';
     
   } else if (user.trialStartedAt && !user.paid) {
     // User is on trial - hide sign-in button and show upgrade button
@@ -1139,38 +1146,11 @@ function updatePaymentUI(user) {
     signInButton.style.display = 'none';
     
   } else {
-    // Check if user is signed in (has userId or email)
-    const isSignedIn = user.userId || user.email;
-    
-    if (isSignedIn) {
-      // User is signed in but not premium - show upgrade button
-      paymentButton.innerHTML = `
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M12 2L2 7l10 5 10-5-10-5z"/>
-          <path d="M2 17l10 5 10-5"/>
-          <path d="M2 12l10 5 10-5"/>
-        </svg>
-        Upgrade to Premium
-      `;
-      paymentButton.classList.remove('premium-active', 'trial-active');
-      paymentButton.disabled = false;
-      paymentButton.style.display = 'flex';
-    } else {
-      // User is not signed in - show sign-in button
-      signInButton.style.display = 'flex';
-      
-      // Also show upgrade button for context
-      paymentButton.innerHTML = `
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M12 2L2 7l10 5 10-5-10-5z"/>
-          <path d="M2 17l10 5 10-5"/>
-          <path d="M2 12l10 5 10-5"/>
-        </svg>
-        Upgrade to Premium
-      `;
-      paymentButton.classList.remove('premium-active', 'trial-active');
-      paymentButton.disabled = false;
-      paymentButton.style.display = 'flex';
+    // User is not signed in or doesn't have trial - show auth buttons
+    paymentButton.style.display = 'none';
+    signInButton.style.display = 'none';
+    if (authButtonsContainer) {
+      authButtonsContainer.style.display = 'flex';
     }
   }
 }
@@ -1202,6 +1182,49 @@ async function checkPremiumAccess() {
     console.error('Error checking premium access:', error);
     showStatus('Error checking subscription status. Please try again.');
     return false;
+  }
+}
+
+function updateUpgradeCardHeader(user) {
+  const upgradeHeader = document.querySelector('.upgrade-header h3');
+  const upgradeIcon = document.querySelector('.upgrade-icon');
+  const upgradeCard = document.querySelector('.upgrade-card');
+  
+  if (!upgradeHeader || !upgradeIcon || !upgradeCard) return;
+  
+  // Reset classes
+  upgradeCard.classList.remove('pro-active', 'trial-active');
+  
+  if (user.paid) {
+    // User has pro - show "Pro Mode Activated"
+    upgradeHeader.textContent = 'Pro Mode Activated';
+    upgradeCard.classList.add('pro-active');
+    // Change icon to a checkmark
+    upgradeIcon.innerHTML = `
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" class="upgrade-icon">
+        <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
+      </svg>
+    `;
+  } else if (user.trialStartedAt && !user.paid) {
+    // User is on trial
+    upgradeHeader.textContent = 'Trial Active - Upgrade to Pro';
+    upgradeCard.classList.add('trial-active');
+    // Keep star icon but change color in CSS
+    upgradeIcon.innerHTML = `
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" class="upgrade-icon trial-active">
+        <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+      </svg>
+    `;
+  } else {
+    // Default state - user needs to sign in
+    upgradeHeader.textContent = 'Sign In Required';
+    // User/account icon for sign in
+    upgradeIcon.innerHTML = `
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" class="upgrade-icon">
+        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+        <circle cx="12" cy="7" r="4"/>
+      </svg>
+    `;
   }
 }
 
@@ -1244,6 +1267,23 @@ function updatePremiumFeaturesList(user) {
       <p>${checkIcon}Priority support</p>
       <p>${checkIcon}Future premium features</p>
     `;
+  }
+}
+
+function updateUpgradeCardFeatures(user) {
+  const featureItems = document.querySelectorAll('.upgrade-features .feature-item span');
+  if (featureItems.length < 3) return;
+  
+  if (user.paid) {
+    // Pro mode - show pro features
+    featureItems[0].textContent = '1,000 Guesses each month';
+    featureItems[1].textContent = 'High Accuracy Location Analysis';
+    featureItems[2].textContent = 'Undetectable';
+  } else {
+    // Free trial mode or unauthenticated - show trial features
+    featureItems[0].textContent = '3 free guesses each week';
+    featureItems[1].textContent = 'High Accuracy Location Analysis';
+    featureItems[2].textContent = 'Undetectable';
   }
 }
 
@@ -1502,7 +1542,7 @@ function showUsageLimitPopup(errorMessage) {
                 <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
               </svg>
             </span>
-            <span class="option-title">Upgrade to Premium</span>
+            <span class="option-title">Upgrade to Pro</span>
           </div>
           <div class="option-benefits">
             <p><span class="check-icon">
@@ -1535,7 +1575,7 @@ function showUsageLimitPopup(errorMessage) {
             <span class="option-title">Wait for Reset</span>
           </div>
           <div class="option-details">
-            <p>Your free guesses will reset on:</p>
+            <p>Your Free Guesses will reset on:</p>
             <strong>${resetDate}</strong>
           </div>
         </div>
@@ -1598,27 +1638,35 @@ function showSignInPrompt() {
     <div class="modal-body">
       <div class="signin-info">
         <div class="signin-icon">
-          ●
+          <img src="../images/geolocationbot128.png" alt="GeoGuesser Hacker" class="signin-logo" />
         </div>
-        <h4>Get Started with Free AI Guesses!</h4>
-        <p>Start your free trial or log in to access geolocation guessing with our AI assistant.</p>
+        <p>Sign Up/Log In to never lose again!</p>
         
         <div class="benefits-list">
           <div class="benefit-item">
-            <span class="benefit-icon">★</span>
-            <span>3 free weekly AI guesses</span>
+            <span class="benefit-icon">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
+              </svg>
+            </span>
+            <span>3 Free Guesses / Week</span>
           </div>
           <div class="benefit-item">
-            <span class="benefit-icon">●</span>
-            <span>High-accuracy location analysis</span>
+            <span class="benefit-icon">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
+              </svg>
+            </span>
+            <span>Unreal Accuracy</span>
           </div>
+         
           <div class="benefit-item">
-            <span class="benefit-icon">■</span>
-            <span>Usage tracking & statistics</span>
-          </div>
-          <div class="benefit-item">
-            <span class="benefit-icon">▲</span>
-            <span>Upgrade anytime for unlimited</span>
+            <span class="benefit-icon">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
+              </svg>
+            </span>
+            <span>Easy Upgrade for Unlimited</span>
           </div>
         </div>
       </div>
@@ -1626,16 +1674,14 @@ function showSignInPrompt() {
       <div class="signin-actions">
         <div class="auth-buttons">
           <button class="signup-button" id="signup-with-extpay">
-            <span class="auth-icon">+</span>
-            Start Free Trial
+            Sign Up
           </button>
           <button class="login-button" id="login-with-extpay">
-            <span class="auth-icon">→</span>
             Log In
           </button>
         </div>
         <p class="signin-note">
-          <small>Secure authentication powered by ExtPay • No spam, ever</small>
+          <small>Secure authentication - No spam, ever</small>
         </p>
       </div>
     </div>
