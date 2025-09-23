@@ -450,8 +450,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
   if (signupSettingsButton) {
     signupSettingsButton.addEventListener('click', () => {
-      extpay.openTrialPage();
-    });
+    extpay.openTrialPage();
+  });
   }
 
   if (loginSettingsButton) {
@@ -848,9 +848,9 @@ async function processImage(dataUrl) {
     
     console.log('Firebase function response status:', response.status);
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        console.error('Firebase function error:', errorData);
+    if (!response.ok) {
+      const errorData = await response.json();
+      console.error('Firebase function error:', errorData);
         
         // Handle 429 - Usage limit exceeded
         if (response.status === 429) {
@@ -863,8 +863,8 @@ async function processImage(dataUrl) {
           return;
         }
         
-        throw new Error(errorData.error?.message || `HTTP error! status: ${response.status}`);
-      }
+      throw new Error(errorData.error?.message || `HTTP error! status: ${response.status}`);
+    }
 
     console.log('Response OK, parsing JSON...');
     const data = await response.json();
@@ -1092,8 +1092,8 @@ async function updateUsageDisplay(usage) {
     const isAuthenticated = user.paid || user.trialStartedAt;
     
     // Find existing usage section
-    let usageSection = document.getElementById('usage-section');
-    
+  let usageSection = document.getElementById('usage-section');
+  
     if (!isAuthenticated) {
       // Hide usage section for unauthenticated users
       if (usageSection) {
@@ -1103,57 +1103,57 @@ async function updateUsageDisplay(usage) {
     }
     
     // Show usage section for authenticated users
-    if (!usageSection) {
-      // Create the usage section
-      usageSection = document.createElement('div');
-      usageSection.id = 'usage-section';
-      usageSection.className = 'settings-section';
-      usageSection.innerHTML = `
-        <h3>Usage Statistics</h3>
-        <div class="usage-info">
-          <div class="usage-item">
-            <span class="usage-label">Current usage:</span>
-            <span class="usage-value" id="current-usage">0</span>
-          </div>
-          <div class="usage-item">
-            <span class="usage-label">Plan limit:</span>
-            <span class="usage-value" id="usage-limit">0</span>
-          </div>
-                <div class="usage-item">
-                  <span class="usage-label" id="reset-label">Resets on:</span>
-                  <span class="usage-value" id="usage-reset">-</span>
-                </div>
-          <div class="usage-item">
-            <span class="usage-label">Plan type:</span>
-            <span class="usage-value" id="plan-type">Free</span>
-          </div>
+  if (!usageSection) {
+    // Create the usage section
+    usageSection = document.createElement('div');
+    usageSection.id = 'usage-section';
+    usageSection.className = 'settings-section';
+    usageSection.innerHTML = `
+      <h3>Usage Statistics</h3>
+      <div class="usage-info">
+        <div class="usage-item">
+          <span class="usage-label">Current usage:</span>
+          <span class="usage-value" id="current-usage">0</span>
         </div>
-      `;
+        <div class="usage-item">
+          <span class="usage-label">Plan limit:</span>
+          <span class="usage-value" id="usage-limit">0</span>
+        </div>
+        <div class="usage-item">
+                  <span class="usage-label" id="reset-label">Resets on:</span>
+          <span class="usage-value" id="usage-reset">-</span>
+        </div>
+        <div class="usage-item">
+          <span class="usage-label">Plan type:</span>
+          <span class="usage-value" id="plan-type">Free</span>
+        </div>
+      </div>
+    `;
     
-      // Try multiple insertion strategies
-      const settingsPage = document.getElementById('settings-page');
-      if (settingsPage) {
-        const premiumSection = settingsPage.querySelector('.payment-section');
-        if (premiumSection && premiumSection.parentNode === settingsPage) {
-          // Insert before premium section if found
-          settingsPage.insertBefore(usageSection, premiumSection);
-        } else {
-          // Fallback: append to settings page
-          settingsPage.appendChild(usageSection);
-        }
+    // Try multiple insertion strategies
+    const settingsPage = document.getElementById('settings-page');
+    if (settingsPage) {
+      const premiumSection = settingsPage.querySelector('.payment-section');
+      if (premiumSection && premiumSection.parentNode === settingsPage) {
+        // Insert before premium section if found
+        settingsPage.insertBefore(usageSection, premiumSection);
       } else {
-        // Fallback: add to main page if settings page not found
-        const mainContent = document.querySelector('.sidepanel-container');
-        if (mainContent) {
-          mainContent.appendChild(usageSection);
-        }
+        // Fallback: append to settings page
+        settingsPage.appendChild(usageSection);
+      }
+    } else {
+      // Fallback: add to main page if settings page not found
+      const mainContent = document.querySelector('.sidepanel-container');
+      if (mainContent) {
+        mainContent.appendChild(usageSection);
       }
     }
+  }
     
     // Make sure usage section is visible for authenticated users
     if (usageSection) {
       usageSection.style.display = 'block';
-    }
+  }
   
   // Update values safely
   const currentUsageEl = document.getElementById('current-usage');
@@ -1188,8 +1188,8 @@ async function updateUsageDisplay(usage) {
       usageResetEl.textContent = '-';
     }
   }
-    if (planTypeEl) {
-      planTypeEl.textContent = capitalizeFirst(usage.subscriptionType || 'free');
+  if (planTypeEl) {
+    planTypeEl.textContent = capitalizeFirst(usage.subscriptionType || 'free');
     }
   } catch (error) {
     console.error('Error updating usage display:', error);
@@ -1218,7 +1218,7 @@ async function syncSubscriptionToFirebase(user) {
         subscriptionStatus = 'past_due';
       } else {
         // User has active subscription (including cancelled but still within term)
-        subscriptionType = 'pro';
+      subscriptionType = 'pro';
         subscriptionStatus = user.subscriptionStatus || 'active';
       }
     } else if (user.trialStartedAt && !user.trialEnded) {
@@ -1457,7 +1457,7 @@ async function checkPremiumAccess() {
         if (user.subscriptionStatus === 'past_due') {
           showStatus('Your subscription payment is past due. Please renew your subscription to continue using premium features.');
         } else {
-          showStatus('This feature requires premium access. Please upgrade or start a free trial.');
+      showStatus('This feature requires premium access. Please upgrade or start a free trial.');
         }
       } else {
         // User is not authenticated at all
@@ -1746,12 +1746,7 @@ async function showUsageLimitExceededModal(errorData) {
   
   // Generate upgrade button HTML if needed
   const upgradeButtonHTML = showUpgradeButton ? `
-    <button class="upgrade-modal-btn" id="upgrade-modal-btn">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M12 2L2 7l10 5 10-5-10-5z"/>
-        <path d="M2 17l10 5 10-5"/>
-        <path d="M2 12l10 5 10-5"/>
-      </svg>
+    <button class="upgrade-modal-btn-green" id="upgrade-modal-btn">
       Upgrade to Pro
     </button>
   ` : '';
@@ -1765,29 +1760,45 @@ async function showUsageLimitExceededModal(errorData) {
       <div class="modal-body">
         <div class="usage-limit-info">
           <div class="usage-limit-icon">
-            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <circle cx="12" cy="12" r="10"/>
-              <path d="M12 6v6l4 2"/>
-            </svg>
+            <img src="../images/geolocationbot128.png" alt="GeoGuesser Hacker" class="modal-logo" />
           </div>
           <h4>Thank you for using GeoGuesser Hacker!</h4>
           <p>You've reached your ${resetPeriod} limit of <strong>${limitText}</strong>.</p>
-          <p>Your usage will reset on <strong>${resetDate}</strong>.</p>
+          <p class="reset-info">Your usage will reset on <strong>${resetDate}</strong>.</p>
           
           ${showUpgradeButton ? `
-          <div class="upgrade-info">
-            <h5>Want unlimited guesses?</h5>
-            <p>Upgrade to Pro for 1,000 guesses per month!</p>
+          <div class="upgrade-features-modal">
+            <h5>Upgrade to Pro and get:</h5>
+            <div class="modal-features-list">
+              <div class="modal-feature-item">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" class="feature-check-modal">
+                  <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
+                </svg>
+                <span>1,000 Guesses per month</span>
+              </div>
+              <div class="modal-feature-item">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" class="feature-check-modal">
+                  <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
+                </svg>
+                <span>Superior Accuracy</span>
+              </div>
+              <div class="modal-feature-item">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" class="feature-check-modal">
+                  <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
+                </svg>
+                <span>Priority Support</span>
+              </div>
+            </div>
           </div>
           ` : `
           <div class="contact-info">
             <p>Need more guesses or have questions? Contact us:</p>
-            <a href="mailto:collinboler@princeton.edu" class="contact-email">
+            <a href="mailto:support@geoguesserhacker.com" class="contact-email">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
                 <polyline points="22,6 12,13 2,6"/>
               </svg>
-              collinboler@princeton.edu
+              support@geoguesserhacker.com
             </a>
           </div>
           `}
@@ -1795,7 +1806,7 @@ async function showUsageLimitExceededModal(errorData) {
         
         <div class="usage-limit-actions">
           ${upgradeButtonHTML}
-          <button class="close-modal-btn" id="close-usage-limit-btn">
+          <button class="maybe-later-btn" id="close-usage-limit-btn">
             ${showUpgradeButton ? 'Maybe Later' : 'Got it!'}
           </button>
         </div>

@@ -8,6 +8,16 @@ extpay.startBackground();
 // Configure side panel behavior
 chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true });
 
+// Open welcome page on extension install
+chrome.runtime.onInstalled.addListener((details) => {
+  if (details.reason === 'install') {
+    console.log('Extension installed - opening welcome page');
+    chrome.tabs.create({
+      url: chrome.runtime.getURL('welcome.html')
+    });
+  }
+});
+
 // Listen for action clicks to open the side panel
 chrome.action.onClicked.addListener((tab) => {
   chrome.sidePanel.open({ windowId: tab.windowId });

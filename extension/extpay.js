@@ -1416,7 +1416,6 @@ You can copy and paste this to your manifest.json file to fix this error:
 	    async function open_popup(url, width, height) {
 	        if (browserPolyfill.windows && browserPolyfill.windows.create) {
 	            const current_window = await browserPolyfill.windows.getCurrent();
-	            // https://stackoverflow.com/a/68456858
 	            const left = Math.round((current_window.width - width) * 0.5 + current_window.left);
 	            const top = Math.round((current_window.height - height) * 0.5 + current_window.top);
 	            try {
@@ -1442,7 +1441,6 @@ You can copy and paste this to your manifest.json file to fix this error:
 	            }
 	        } else {
 	            // for opening from a content script
-	            // https://developer.mozilla.org/en-US/docs/Web/API/Window/open
 	            window.open(url, null, `toolbar=no,location=no,directories=no,status=no,menubar=no,width=${width},height=${height},left=450`);
 	        }
 	    }

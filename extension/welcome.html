@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Welcome to GeoGuesser Hacker</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .welcome-container {
+            background: white;
+            border-radius: 20px;
+            padding: 48px;
+            max-width: 600px;
+            width: 100%;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .welcome-container::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, #4ade80, #22d3ee, #8b5cf6);
+        }
+
+        .logo {
+            width: 80px;
+            height: 80px;
+            margin: 0 auto 24px;
+            border-radius: 16px;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            font-size: 32px;
+            font-weight: 700;
+            color: #1f2937;
+            margin-bottom: 8px;
+        }
+
+        .subtitle {
+            font-size: 18px;
+            color: #6b7280;
+            margin-bottom: 32px;
+        }
+
+        .checklist {
+            background: #f8fafc;
+            border-radius: 16px;
+            padding: 32px;
+            margin: 32px 0;
+            border: 1px solid #e2e8f0;
+        }
+
+        .checklist h2 {
+            font-size: 24px;
+            font-weight: 600;
+            color: #1e293b;
+            margin-bottom: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .checklist-items {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .checklist-item {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            padding: 16px;
+            background: white;
+            border-radius: 12px;
+            border: 2px solid #e2e8f0;
+            transition: all 0.3s ease;
+        }
+
+        .checklist-item:hover {
+            border-color: #4ade80;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(74, 222, 128, 0.2);
+        }
+
+        .checklist-icon {
+            width: 48px;
+            height: 48px;
+            background: linear-gradient(135deg, #4ade80, #22d3ee);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            flex-shrink: 0;
+            font-size: 24px;
+            font-weight: 700;
+        }
+
+        .checklist-content {
+            text-align: left;
+            flex: 1;
+        }
+
+        .checklist-content h3 {
+            font-size: 18px;
+            font-weight: 600;
+            color: #1f2937;
+            margin-bottom: 4px;
+        }
+
+        .checklist-content p {
+            font-size: 14px;
+            color: #6b7280;
+            line-height: 1.4;
+        }
+
+        .step-number {
+            width: 24px;
+            height: 24px;
+            background: #4ade80;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        .free-plan {
+            background: linear-gradient(135deg, #f0f9ff, #e0f2fe);
+            border-radius: 16px;
+            padding: 24px;
+            margin: 32px 0;
+            border: 1px solid #0ea5e9;
+        }
+
+        .free-plan h3 {
+            font-size: 20px;
+            font-weight: 600;
+            color: #0c4a6e;
+            margin-bottom: 8px;
+        }
+
+        .free-plan p {
+            color: #075985;
+            margin-bottom: 16px;
+        }
+
+        .features {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: #0c4a6e;
+            font-weight: 500;
+        }
+
+        .pro-plan {
+            background: linear-gradient(135deg, #c7fed8, #8afdea);
+            border-radius: 16px;
+            padding: 24px;
+            margin: 24px 0;
+            border: 1px solid #10b981;
+        }
+
+        .pro-plan h3 {
+            font-size: 20px;
+            font-weight: 600;
+            color: #047857;
+            margin-bottom: 8px;
+        }
+
+        .pro-plan p {
+            color: #059669;
+            margin-bottom: 16px;
+        }
+
+        .security-note {
+            background: #f1f5f9;
+            border-radius: 12px;
+            padding: 16px;
+            margin-top: 16px;
+            border-left: 4px solid #3b82f6;
+        }
+
+        .security-note p {
+            font-size: 14px;
+            color: #475569;
+            margin: 0;
+        }
+
+        .cta-buttons {
+            display: flex;
+            gap: 16px;
+            justify-content: center;
+            margin-top: 32px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 14px 28px;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            border: none;
+            cursor: pointer;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #4ade80, #22d3ee);
+            color: white;
+            box-shadow: 0 4px 12px rgba(74, 222, 128, 0.3);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(74, 222, 128, 0.4);
+        }
+
+        .btn-secondary {
+            background: linear-gradient(135deg, #6b7280, #5a6169);
+            color: white;
+            box-shadow: 0 4px 12px rgba(107, 114, 128, 0.3);
+        }
+
+        .btn-secondary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(107, 114, 128, 0.4);
+        }
+
+        @media (max-width: 640px) {
+            .welcome-container {
+                padding: 32px 24px;
+            }
+
+            .checklist {
+                padding: 24px 16px;
+            }
+
+            .cta-buttons {
+                flex-direction: column;
+            }
+
+            .btn {
+                justify-content: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="welcome-container">
+        <img src="images/geolocationbot128.png" alt="GeoGuesser Hacker" class="logo">
+        
+        <h1>Thanks for downloading!</h1>
+        <p class="subtitle">Welcome to GeoGuesser Hacker - the ultimate location guessing companion</p>
+
+        <div class="checklist">
+            <h2>
+                Getting Started Checklist
+            </h2>
+            
+            <div class="checklist-items">
+                <div class="checklist-item">
+                    <div class="checklist-icon">
+                        1
+                    </div>
+                    <div class="checklist-content">
+                        <h3>Pin the Chrome Extension</h3>
+                        <p>Click the puzzle piece icon in your browser toolbar and pin GeoGuesser Hacker for easy access</p>
+                    </div>
+                </div>
+
+                <div class="checklist-item">
+                    <div class="checklist-icon">
+                        2
+                    </div>
+                    <div class="checklist-content">
+                        <h3>Sign In / Sign Up</h3>
+                        <p>Create your free account to start using GeoGuesser Hacker - no credit card required!</p>
+                    </div>
+                </div>
+
+                <div class="checklist-item">
+                    <div class="checklist-icon">
+                        3
+                    </div>
+                    <div class="checklist-content">
+                        <h3>Start Winning!</h3>
+                        <p>Open GeoGuessr, click "Guess" on the extension, and let GeoGuesser Hacker help you dominate the leaderboard</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+
+
+        <div class="pro-plan">
+            <h3>Ready for More? Upgrade to Pro</h3>
+            <p>Unlock unlimited potential with 1,000 guesses per month!</p>
+            <div class="features">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
+                </svg>
+                <span><strong>1,000 guesses per month</strong> + Superior accuracy + Priority support</span>
+            </div>
+            
+            <div class="security-note">
+                <p><strong>Secure payments powered by Stripe & ExtPay.js</strong> - Your payment information is protected by the same technology used by Twitter, LinkedIn, and thousands of other trusted sites.</p>
+            </div>
+        </div>
+
+       
+    </div>
+
+    <script src="extpay.js"></script>
+    <script>
+        // Initialize ExtPay
+        const extpay = ExtPay('geoguesser-hacker');
+
+        // Get Started button - opens trial page
+        document.getElementById('get-started-btn').addEventListener('click', () => {
+            console.log('Starting free trial...');
+            extpay.openTrialPage();
+        });
+
+        // Maybe Later button - just closes the tab
+        document.getElementById('maybe-later-btn').addEventListener('click', () => {
+            console.log('User chose maybe later');
+            window.close();
+        });
+
+        // Add some welcome animation
+        document.addEventListener('DOMContentLoaded', () => {
+            const container = document.querySelector('.welcome-container');
+            container.style.opacity = '0';
+            container.style.transform = 'translateY(20px)';
+            
+            setTimeout(() => {
+                container.style.transition = 'all 0.6s ease';
+                container.style.opacity = '1';
+                container.style.transform = 'translateY(0)';
+            }, 100);
+
+            // Animate checklist items
+            const items = document.querySelectorAll('.checklist-item');
+            items.forEach((item, index) => {
+                item.style.opacity = '0';
+                item.style.transform = 'translateX(-20px)';
+                
+                setTimeout(() => {
+                    item.style.transition = 'all 0.4s ease';
+                    item.style.opacity = '1';
+                    item.style.transform = 'translateX(0)';
+                }, 300 + (index * 100));
+            });
+        });
+    </script>
+</body>
+</html>

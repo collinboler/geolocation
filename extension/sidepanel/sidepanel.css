@@ -2227,51 +2227,121 @@ body.dark-mode .modal-close:hover {
     transform: translateY(-1px);
 }
 
-/* Upgrade button in usage limit modal */
-.upgrade-modal-btn {
-    background: linear-gradient(135deg, #4f46e5, #7c3aed);
+/* Modal logo styling */
+.modal-logo {
+    width: 64px;
+    height: 64px;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+/* Usage limit info spacing improvements */
+.usage-limit-info {
+    text-align: center;
+    padding: 4px 0 4px 0; /* Further reduced top padding */
+}
+
+.usage-limit-info h4 {
+    margin: 0px 0 16px 0; /* Further reduced top margin from 12px to 4px */
+    font-size: 24px;
+    font-weight: 700;
+    color: #333;
+}
+
+.usage-limit-info p {
+    margin: 0 0 12px 0;
+    font-size: 16px;
+    line-height: 1.5;
+    color: #666;
+}
+
+.reset-info {
+    margin-bottom: 24px !important;
+}
+
+/* Green upgrade button */
+.upgrade-modal-btn-green {
+    background: linear-gradient(135deg, #10b981, #059669);
     color: white;
     border: none;
-    padding: 12px 24px;
+    padding: 14px 28px;
     border-radius: 8px;
     font-size: 16px;
     font-weight: 600;
     cursor: pointer;
     transition: all 0.3s ease;
-    box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    margin-right: 12px;
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+    flex: 1;
+    max-width: 200px;
 }
 
-.upgrade-modal-btn:hover {
-    background: linear-gradient(135deg, #7c3aed, #8b5cf6);
-    box-shadow: 0 6px 15px rgba(124, 58, 237, 0.4);
+.upgrade-modal-btn-green:hover {
+    background: linear-gradient(135deg, #059669, #047857);
+    box-shadow: 0 6px 15px rgba(5, 150, 105, 0.4);
     transform: translateY(-1px);
 }
 
-/* Upgrade info section in modal */
-.upgrade-info {
-    background: #f0f7ff;
+/* Gray maybe later button */
+.maybe-later-btn {
+    background: linear-gradient(135deg, #6b7280, #5a6169);
+    color: white;
+    border: none;
+    padding: 14px 28px;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 12px rgba(107, 114, 128, 0.3);
+    flex: 1;
+    max-width: 200px;
+}
+
+.maybe-later-btn:hover {
+    background: linear-gradient(135deg, #5a6169, #4b5563);
+    box-shadow: 0 6px 15px rgba(75, 85, 99, 0.4);
+    transform: translateY(-1px);
+}
+
+/* Upgrade features section in modal */
+.upgrade-features-modal {
+    background: #f8fafc;
     border-radius: 12px;
     padding: 20px;
-    margin: 20px 0;
-    border: 1px solid #e0e7ff;
+    margin: 16px 0 8px 0; /* Reduced margins - less space above and below */
+    border: 1px solid #e2e8f0;
+}
+
+.upgrade-features-modal h5 {
+    margin: 0 0 12px 0; /* Reduced bottom margin from 16px to 12px */
+    font-size: 18px;
+    font-weight: 600;
+    color: #1e293b;
     text-align: center;
 }
 
-.upgrade-info h5 {
-    margin: 0 0 8px 0;
-    font-size: 18px;
-    font-weight: 600;
-    color: #4f46e5;
+.modal-features-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px; /* Reduced gap from 12px to 8px */
 }
 
-.upgrade-info p {
-    margin: 0;
-    font-size: 14px;
-    color: #6b7280;
+.modal-feature-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 4px 0; /* Reduced padding from 8px to 4px */
+}
+
+.feature-check-modal {
+    color: #10b981;
+    flex-shrink: 0;
+}
+
+.modal-feature-item span {
+    font-size: 15px;
+    font-weight: 500;
+    color: #374151;
 }
 
 /* Modal actions layout for multiple buttons */
@@ -2279,31 +2349,58 @@ body.dark-mode .modal-close:hover {
     display: flex;
     justify-content: center;
     align-items: center;
-    gap: 12px;
-    padding-top: 20px;
+    gap: 16px;
+    padding: 20px 24px 0; /* Reduced top padding from 32px to 20px */
     flex-wrap: wrap;
 }
 
+/* Ensure modal content has proper max width */
+.usage-limit-modal-content {
+    max-width: 480px;
+    width: 90%;
+    margin: 0 auto;
+}
+
 /* Dark mode styles for new elements */
-body.dark-mode .upgrade-info {
-    background: #1e1b4b;
-    border-color: #3730a3;
+body.dark-mode .modal-logo {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
 
-body.dark-mode .upgrade-info h5 {
-    color: #a5b4fc;
+body.dark-mode .usage-limit-info h4 {
+    color: #e2e8f0;
 }
 
-body.dark-mode .upgrade-info p {
-    color: #9ca3af;
+body.dark-mode .usage-limit-info p {
+    color: #cbd5e0;
 }
 
-body.dark-mode .upgrade-modal-btn {
-    box-shadow: 0 4px 12px rgba(79, 70, 229, 0.2);
+body.dark-mode .upgrade-features-modal {
+    background: #2d3748;
+    border-color: #4a5568;
 }
 
-body.dark-mode .upgrade-modal-btn:hover {
-    box-shadow: 0 6px 15px rgba(124, 58, 237, 0.3);
+body.dark-mode .upgrade-features-modal h5 {
+    color: #e2e8f0;
+}
+
+body.dark-mode .modal-feature-item span {
+    color: #cbd5e0;
+}
+
+body.dark-mode .upgrade-modal-btn-green {
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2);
+}
+
+body.dark-mode .upgrade-modal-btn-green:hover {
+    box-shadow: 0 6px 15px rgba(5, 150, 105, 0.3);
+}
+
+body.dark-mode .maybe-later-btn {
+    box-shadow: 0 4px 12px rgba(107, 114, 128, 0.2);
+}
+
+body.dark-mode .maybe-later-btn:hover {
+    box-shadow: 0 6px 15px rgba(75, 85, 99, 0.3);
 }
 
 /* Dark mode styles for usage limit modal */
