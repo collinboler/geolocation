@@ -784,24 +784,42 @@ async function processImage(dataUrl) {
     }
     
     
-    // Call Firebase Function instead of OpenAI directly
-    const response = await fetch('https://us-central1-geoguesser-hacker-ext.cloudfunctions.net/processGeolocation', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        data: {
-          extpayUserId: extpayUserId,
-          imageData: dataUrl
-        }
-      })
-    });
+    // Call local StreetCLIP service instead of Firebase/OpenAI
+    const localServiceUrl = 'http://localhost:8081';
+    console.log('Attempting to connect to StreetCLIP service at:', localServiceUrl);
+    
+    let response;
+    try {
+      response = await fetch(`${localServiceUrl}/processGeolocation`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          data: {
+            extpayUserId: extpayUserId,
+            imageData: dataUrl
+          }
+        })
+      });
+      
+      console.log('StreetCLIP response status:', response.status);
+    } catch (fetchError) {
+      console.error('Fetch error details:', fetchError);
+      
+      // Restore button state
+      cameraIcon.style.display = 'inline';
+      buttonText.style.display = 'inline';
+      loadingSpinner.style.display = 'none';
+      
+      alert('Failed to connect to local StreetCLIP service. Please make sure it\'s running on port 8081.\n\nTo start the service:\n1. Open Terminal\n2. cd backend/streetclip-service\n3. ./start.sh');
+      return;
+    }
     
 
     if (!response.ok) {
       const errorData = await response.json();
-      console.error('Firebase function error:', errorData);
+      console.error('StreetCLIP service error:', errorData);
         
         // Handle 429 - Usage limit exceeded
         if (response.status === 429) {
@@ -820,9 +838,12 @@ async function processImage(dataUrl) {
     const data = await response.json();
     const result = data.result;
     
+    console.log('Received result:', result);
     
-    // Update usage display immediately from response
-    updateUsageDisplay(result.usage);
+    // Update usage display immediately from response (if available)
+    if (result.usage) {
+      updateUsageDisplay(result.usage);
+    }
     
     // Also refresh usage from database after a short delay to ensure consistency
     setTimeout(async () => {
@@ -836,8 +857,9 @@ async function processImage(dataUrl) {
     }, 1000);
     
     const locationData = {
-      coordinates: result.result.coordinates,
-      description: result.result.location
+      coordinates: result.coordinates,
+      description: result.location,
+      confidence: result.confidence
     };
     
     if (locationData.coordinates) {
@@ -852,7 +874,23 @@ async function processImage(dataUrl) {
     }
     
     if (locationData.description) {
-      document.getElementById('location-words').textContent = locationData.description;
+      // Add confidence percentage to the location display
+      const confidence = locationData.confidence || 0;
+      const confidencePercentage = Math.round(confidence * 100);
+      
+      if (confidencePercentage > 0) {
+        // Create styled confidence display
+        const confidenceColor = confidencePercentage >= 80 ? '#4CAF50' : confidencePercentage >= 60 ? '#FF9800' : '#FF5722';
+        const confidenceHTML = `
+          ${locationData.description}
+          <span style="color: ${confidenceColor}; font-weight: 600; margin-left: 8px;">
+            ${confidencePercentage}% confidence
+          </span>
+        `;
+        document.getElementById('location-words').innerHTML = confidenceHTML;
+      } else {
+        document.getElementById('location-words').textContent = locationData.description;
+      }
     }
 
     // Restore original button state

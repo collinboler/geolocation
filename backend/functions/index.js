@@ -518,7 +518,69 @@ async function getImageDimensions(dataUrl) {
 }
 
 /**
- * Process image with OpenAI
+ * Process image with StreetCLIP (local model)
+ */
+async function processWithStreetCLIP(imageData) {
+  try {
+    console.log('Processing image with StreetCLIP...');
+    
+    // Get the StreetCLIP service URL from environment variable or use default
+    const streetclipUrl = process.env.STREETCLIP_SERVICE_URL || 'http://localhost:5000';
+    
+    const response = await fetch(`${streetclipUrl}/predict`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        imageData: imageData
+      })
+    });
+    
+    if (!response.ok) {
+      throw new Error(`StreetCLIP service error: ${response.status} ${response.statusText}`);
+    }
+    
+    const data = await response.json();
+    const result = data.result;
+    
+    console.log('StreetCLIP response:', {
+      location: result.location,
+      confidence: result.confidence,
+      processing_time: result.processing_time,
+      coordinates: result.coordinates
+    });
+    
+    return {
+      coordinates: result.coordinates,
+      location: result.location,
+      confidence: result.confidence,
+      processing_time: result.processing_time,
+      model: result.model,
+      cost: 0, // No cost for local model
+      tokensUsed: 0, // No tokens for local model
+      rawResponse: JSON.stringify(result)
+    };
+    
+  } catch (error) {
+    console.error("StreetCLIP API Error:", error);
+    
+    // Fallback response if StreetCLIP service is unavailable
+    return {
+      coordinates: { lat: 0, lng: 0 },
+      location: "StreetCLIP Service Unavailable - Please Check Local Service",
+      confidence: 0,
+      processing_time: 0,
+      model: "StreetCLIP (error)",
+      cost: 0,
+      tokensUsed: 0,
+      rawResponse: error.message
+    };
+  }
+}
+
+/**
+ * Process image with OpenAI (legacy function - kept for fallback)
  */
 async function processWithOpenAI(imageData, apiKey) {
   try {

@@ -13,7 +13,7 @@
       "<all_urls>"
     ],
     "content_security_policy": {
-        "extension_pages": "script-src 'self'; connect-src 'self' https://extensionpay.com https://us-central1-geoguesser-hacker-ext.cloudfunctions.net; object-src 'self'"
+        "extension_pages": "script-src 'self'; connect-src 'self' https://extensionpay.com https://us-central1-geoguesser-hacker-ext.cloudfunctions.net http://localhost:8081; object-src 'self'"
     },
    
     "action" : {
