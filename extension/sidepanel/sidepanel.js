@@ -9,7 +9,6 @@ const extpay = ExtPay('geoguesser-hacker');
 
 // Automatic refresh when user completes payment
 extpay.onPaid.addListener(async (user) => {
-  console.log('🎉 ExtPay onPaid event fired:', user);
   try {
     // Show immediate feedback
     showStatus('Payment successful! Activating Pro features...');
@@ -34,7 +33,6 @@ extpay.onPaid.addListener(async (user) => {
 
 // Automatic refresh when user starts trial
 extpay.onTrialStarted.addListener(async (user) => {
-  console.log('🎉 ExtPay onTrialStarted event fired:', user);
   try {
     // Show immediate feedback
     showStatus('Free trial activated! You now have access to free guesses.');
@@ -206,16 +204,13 @@ document.addEventListener('DOMContentLoaded', () => {
   // Centralized refresh function to prevent race conditions
   const refreshUIState = async (source = 'unknown') => {
     if (isRefreshing) {
-      console.log(`🔄 Refresh already in progress, skipping (source: ${source})`);
       return;
     }
     
     try {
       isRefreshing = true;
-      console.log(`🔄 Refreshing UI state (source: ${source})`);
       
       await checkPaymentStatus();
-      console.log(`✅ UI state refresh complete (source: ${source})`);
     } catch (error) {
       console.error(`❌ Error refreshing UI state (source: ${source}):`, error);
     } finally {
@@ -259,7 +254,6 @@ document.addEventListener('DOMContentLoaded', () => {
         );
         
         if (extpayKeys.length > 0) {
-          console.log('🔄 Chrome storage change detected:', extpayKeys);
           await refreshUIState('storage-change');
         }
       }
@@ -268,14 +262,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Listen for custom events (can be triggered by other parts of the extension)
   window.addEventListener('extpay-state-changed', async (event) => {
-    console.log('🔄 Custom ExtPay state change event received:', event.detail);
     await refreshUIState('custom-event');
   });
 
   // Listen for ExtPay popup closure (user returning from payment flow)
   let extpayWindowCheckInterval;
   const startExtPayWindowMonitoring = () => {
-    console.log('🔄 Starting ExtPay window monitoring...');
     extpayWindowCheckInterval = setInterval(async () => {
       // Check if user has returned from ExtPay by testing getUser response time
       try {
@@ -290,7 +282,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
       } catch (error) {
         // If there's an error, user might still be in ExtPay flow
-        console.log('ExtPay getUser error (user might still be in payment flow):', error);
       }
     }, 2000); // Check every 2 seconds
     
@@ -298,7 +289,6 @@ document.addEventListener('DOMContentLoaded', () => {
     setTimeout(() => {
       if (extpayWindowCheckInterval) {
         clearInterval(extpayWindowCheckInterval);
-        console.log('🔄 ExtPay window monitoring timeout - stopping');
       }
     }, 600000); // 10 minutes
   };
@@ -311,7 +301,6 @@ document.addEventListener('DOMContentLoaded', () => {
     mutations.forEach((mutation) => {
       if (mutation.type === 'attributes' && mutation.attributeName === 'style') {
         if (settingsPage && settingsPage.style.display !== 'none') {
-          console.log('🔄 Settings page became visible');
           setTimeout(() => refreshUIState('settings-visible'), 100);
         }
       }
@@ -434,7 +423,6 @@ document.addEventListener('DOMContentLoaded', () => {
   // Payment button event listener
   paymentButton.addEventListener('click', () => {
     // For all states (Upgrade to Pro, Manage Plan), open ExtPay page
-    console.log('🔄 Payment button clicked - starting window monitoring');
     startExtPayWindowMonitoring();
     extpay.openPaymentPage();
   });
@@ -467,7 +455,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Listen for payment completion
   extpay.onPaid.addListener(user => {
-    console.log('User has paid:', user);
     syncSubscriptionToFirebase(user);
     setTimeout(() => checkPaymentStatus(), 1000);
     showStatus('Payment successful! Premium features unlocked.');
@@ -475,7 +462,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Listen for trial started
   extpay.onTrialStarted.addListener(user => {
-    console.log('User started trial:', user);
     
     // Immediately hide the sign-in button
     const signInButton = document.getElementById('signin-button');
@@ -678,7 +664,6 @@ function captureScreen() {
   chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
     const currentTab = tabs[0];
     
-    console.log('TESTING: Does captureVisibleTab include the sidebar?');
     
     // Capture the visible tab content
     chrome.tabs.captureVisibleTab(currentTab.windowId, { format: 'png' }, (dataUrl) => {
@@ -716,21 +701,9 @@ function captureScreen() {
           // Let's examine what we captured vs what we expected
           const img = new Image();
           img.onload = () => {
-            console.log('CAPTURE ANALYSIS:', {
-              'Tab content width (from page)': pageInfo.windowWidth,
-              'Browser window width': window.width,
-              'Sidebar width': actualSidebarWidth,
-              'Expected content width': pageInfo.windowWidth,
-              'Captured image width': img.width,
-              'Captured image height': img.height,
-              'Device pixel ratio': pageInfo.devicePixelRatio,
-              'Expected image width if no sidebar filtering': window.width * pageInfo.devicePixelRatio,
-              'Expected image width if sidebar filtered': pageInfo.windowWidth * pageInfo.devicePixelRatio
-            });
             
             // For now, let's just use the FULL captured image without any cropping
             // This will tell us if the sidebar is included or not
-            console.log('USING FULL CAPTURED IMAGE - no cropping to test theory');
             processImage(dataUrl);
           };
           img.src = dataUrl;
@@ -756,27 +729,11 @@ function processCapturedImage(dataUrl, windowWidth, sidebarWidth, pageInfo = nul
     // Ensure we don't exceed the captured image bounds
     const finalWidth = Math.min(targetImageWidth, img.width);
     
-    console.log('Processing capture:', {
-      browserWindowWidth: windowWidth,
-      sidebarWidth,
-      actualContentWidth,
-      capturedImageWidth: img.width,
-      capturedImageHeight: img.height,
-      imageToWindowRatio,
-      targetImageWidth,
-      finalWidth,
-      pageInfo
-    });
     
     // Let's try taking the FULL captured image width instead of calculating
     // The issue might be that we're under-calculating the target width
     const fullCapturedWidth = img.width;
     
-    console.log('DEBUG: Using full captured width instead:', {
-      calculatedTargetWidth: targetImageWidth,
-      fullCapturedWidth: fullCapturedWidth,
-      difference: fullCapturedWidth - targetImageWidth
-    });
     
     // Set canvas dimensions to the FULL captured width to test
     canvas.width = fullCapturedWidth;
@@ -826,11 +783,6 @@ async function processImage(dataUrl) {
       return;
     }
     
-    console.log('Processing image for user:', extpayUserId);
-    console.log('Image data length:', dataUrl.length);
-    console.log('Image data preview:', dataUrl.substring(0, 100) + '...');
-    console.log('Full base64 image data:', dataUrl);
-    console.log('Calling Firebase function...');
     
     // Call Firebase Function instead of OpenAI directly
     const response = await fetch('https://us-central1-geoguesser-hacker-ext.cloudfunctions.net/processGeolocation', {
@@ -846,7 +798,6 @@ async function processImage(dataUrl) {
       })
     });
     
-    console.log('Firebase function response status:', response.status);
 
     if (!response.ok) {
       const errorData = await response.json();
@@ -866,13 +817,8 @@ async function processImage(dataUrl) {
       throw new Error(errorData.error?.message || `HTTP error! status: ${response.status}`);
     }
 
-    console.log('Response OK, parsing JSON...');
     const data = await response.json();
-    console.log('Full response data:', data);
     const result = data.result;
-    
-    console.log('Firebase function response data:', result);
-    console.log('Usage from response:', result.usage);
     
     
     // Update usage display immediately from response
@@ -918,7 +864,6 @@ async function processImage(dataUrl) {
     console.error('Error:', error);
     
     // Handle specific error types
-    console.log('Error message for analysis:', error.message);
     
     if (error.message.includes('Free limit reached')) {
       // Show upgrade popup for free users who exceeded limit
@@ -1019,7 +964,6 @@ async function initializeFirebaseUser() {
     });
     
     if (response.ok) {
-      console.log('Firebase user initialized successfully');
       // Load usage information with a small delay
       setTimeout(() => loadUsageInformation(extpayUserId), 500);
     } else {
@@ -1034,7 +978,6 @@ async function initializeFirebaseUser() {
 // Load and display usage information
 async function loadUsageInformation(extpayUserId) {
   try {
-    console.log('Loading usage information for user:', extpayUserId);
     const response = await fetch('https://us-central1-geoguesser-hacker-ext.cloudfunctions.net/getUserUsage', {
       method: 'POST',
       headers: {
@@ -1047,13 +990,6 @@ async function loadUsageInformation(extpayUserId) {
     
     if (response.ok) {
       const data = await response.json();
-      console.log('Usage data received:', data.result);
-      console.log('Backend subscription flags:', {
-        isCancelled: data.result.isCancelled,
-        isPastDue: data.result.isPastDue,
-        subscriptionType: data.result.subscriptionType,
-        subscriptionStatus: data.result.subscriptionStatus
-      });
       
       // Store backend flags globally for UI updates
       window.backendSubscriptionFlags = {
@@ -1083,7 +1019,6 @@ async function loadUsageInformation(extpayUserId) {
 
 // Update usage display in UI
 async function updateUsageDisplay(usage) {
-  console.log('updateUsageDisplay called with:', usage);
   
   // Check if user is authenticated (has trial or paid subscription)
   try {
@@ -1204,7 +1139,6 @@ async function updateUsageDisplay(usage) {
 // Sync subscription changes to Firebase
 async function syncSubscriptionToFirebase(user) {
   try {
-    console.log('Syncing subscription to Firebase:', user);
     
     const extpayUserId = user.userId || user.email || 'anonymous';
     let subscriptionType = 'free';
@@ -1230,18 +1164,6 @@ async function syncSubscriptionToFirebase(user) {
     const isCancelled = user.subscriptionStatus === 'canceled';
     const isPastDue = user.subscriptionStatus === 'past_due';
     
-    console.log('ExtPay user object:', user);
-    console.log('Subscription sync data:', { 
-      extpayUserId, 
-      subscriptionStatus, 
-      subscriptionType, 
-      isCancelled, 
-      isPastDue,
-      userPaid: user.paid,
-      userSubscriptionStatus: user.subscriptionStatus,
-      userTrialStartedAt: user.trialStartedAt,
-      userTrialEnded: user.trialEnded
-    });
     
     const response = await fetch('https://us-central1-geoguesser-hacker-ext.cloudfunctions.net/updateSubscription', {
       method: 'POST',
@@ -1260,7 +1182,6 @@ async function syncSubscriptionToFirebase(user) {
     });
     
     if (response.ok) {
-      console.log('Subscription synced to Firebase successfully');
       // Force refresh usage information
       setTimeout(() => loadUsageInformation(extpayUserId), 1000);
     } else {
@@ -1280,7 +1201,6 @@ function capitalizeFirst(str) {
 window.debugExtPay = async function() {
   try {
     const user = await extpay.getUser();
-    console.log('Current ExtPay user:', user);
     await syncSubscriptionToFirebase(user);
     await checkPaymentStatus();
     return user;
@@ -1431,7 +1351,6 @@ function updatePaymentUI(user) {
 async function checkPremiumAccess() {
   try {
     const user = await extpay.getUser();
-    console.log('ExtPay user status:', user);
     
     // Check subscription status using backend flags if available, otherwise fallback to ExtPay status
     const backendFlags = window.backendSubscriptionFlags;
@@ -1441,14 +1360,6 @@ async function checkPremiumAccess() {
     const hasActiveTrial = user.trialStartedAt && !user.paid; // Trial active if trialStartedAt exists and not paid
     const hasAccess = isSubscriptionActive || hasActiveTrial;
     
-    console.log('Premium access check:', { 
-      isPaid: user.paid,
-      subscriptionStatus: user.subscriptionStatus,
-      isSubscriptionActive, 
-      hasActiveTrial, 
-      hasAccess,
-      trialStartedAt: user.trialStartedAt 
-    });
     
     if (!hasAccess) {
       // Check if user is authenticated but just not premium
@@ -1591,7 +1502,6 @@ function checkCancelledSubscriptionWarning(user) {
   const isCancelledUser = backendFlags?.isCancelled || (user.paid && user.subscriptionStatus === 'canceled');
   const isPastDueUser = backendFlags?.isPastDue || (user.paid && user.subscriptionStatus === 'past_due');
   
-  console.log('Checking cancellation warning:', { isCancelledUser, isPastDueUser, backendFlags, userPaid: user.paid, userStatus: user.subscriptionStatus });
   
   // Only show cancellation warning for truly cancelled users (not past due masquerading as cancelled)
   const shouldShowCancelledWarning = false; // Temporarily disable for cleaner UI
@@ -1679,12 +1589,10 @@ function removeCancelledSubscriptionWarning() {
 }
 
 async function showUsageLimitExceededModal(errorData) {
-  console.log('showUsageLimitExceededModal called with:', errorData);
   
   // Remove any existing modal first
   const existingModal = document.getElementById('usage-limit-modal');
   if (existingModal) {
-    console.log('Removing existing modal');
     existingModal.remove();
   }
 
@@ -1725,7 +1633,6 @@ async function showUsageLimitExceededModal(errorData) {
   modal.id = 'usage-limit-modal';
   modal.className = 'modal-overlay';
   
-  console.log('Created modal element:', modal);
   
   // Extract reset date - try to get it from the already displayed usage info
   let resetDate = `next ${resetPeriod === 'weekly' ? 'week' : 'month'}`;
@@ -1737,7 +1644,6 @@ async function showUsageLimitExceededModal(errorData) {
   } else {
     // Fallback: try to extract from error message
     const errorMessage = errorData.error?.message || `You've reached your ${resetPeriod} limit`;
-    console.log('Error message for date parsing:', errorMessage);
     const resetDateMatch = errorMessage.match(/Resets on (.+?)\./);
     if (resetDateMatch && resetDateMatch[1] !== 'Invalid Date') {
       resetDate = resetDateMatch[1];
@@ -1815,9 +1721,7 @@ async function showUsageLimitExceededModal(errorData) {
   `;
   
   // Add to page
-  console.log('Adding modal to document.body');
   document.body.appendChild(modal);
-  console.log('Modal added to page, checking if visible');
   
   // Add event listeners
   const closeButtons = modal.querySelectorAll('#close-usage-modal, #close-usage-limit-btn');
@@ -1831,7 +1735,6 @@ async function showUsageLimitExceededModal(errorData) {
   const upgradeBtn = modal.querySelector('#upgrade-modal-btn');
   if (upgradeBtn) {
     upgradeBtn.addEventListener('click', () => {
-      console.log('🔄 Upgrade button clicked from usage limit modal');
       modal.remove();
       // Start monitoring for ExtPay window
       startExtPayWindowMonitoring();
@@ -1871,7 +1774,6 @@ async function testUsageReset() {
       return;
     }
     
-    console.log('Testing usage reset for user:', extpayUserId);
     
     // Call the test function
     const response = await fetch('https://us-central1-geoguesser-hacker-ext.cloudfunctions.net/testResetUser', {
@@ -1882,7 +1784,6 @@ async function testUsageReset() {
     
     if (response.ok) {
       const result = await response.json();
-      console.log('Test reset result:', result.result);
       
       alert(`Test setup complete! Your reset date was set to yesterday. 
              Now make a guess and check the console logs to see the auto-reset in action.
@@ -1914,7 +1815,6 @@ async function handleExtPayEdgeCases() {
     
     // Edge Case 2: ExtPay service unavailable
     if (!user && navigator.onLine) {
-      console.warn('ExtPay service may be unavailable');
       showStatus('Payment service temporarily unavailable. Please try again later.');
       // Fallback to allow usage with warning
       return { paid: false, trialStarted: false };
@@ -2408,7 +2308,6 @@ function showSignInPrompt() {
       showStatus('Opening free trial page...');
       
       // Start monitoring for ExtPay window closure
-      console.log('🔄 Sign up button clicked - starting window monitoring');
       startExtPayWindowMonitoring();
       
       // Open ExtPay trial page for new users (free trial sign-up)
@@ -2428,7 +2327,6 @@ function showSignInPrompt() {
       showStatus('Opening log-in page...');
       
       // Start monitoring for ExtPay window closure
-      console.log('🔄 Log in button clicked - starting window monitoring');
       startExtPayWindowMonitoring();
       
       // Open ExtPay login page for existing users

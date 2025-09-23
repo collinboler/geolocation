@@ -40,7 +40,7 @@ document.addEventListener('DOMContentLoaded', function() {
             // Check if Chrome extension is supported
             if (typeof chrome !== 'undefined' && chrome.webstore) {
                 // Replace with your actual Chrome Web Store ID
-                const extensionId = 'your-extension-id-here';
+                const extensionId = 'ogjhgcaaaclhdaalliolbhibppalepkj';
                 
                 try {
                     chrome.webstore.install(

@@ -11,7 +11,6 @@ chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true });
 // Open welcome page on extension install
 chrome.runtime.onInstalled.addListener((details) => {
   if (details.reason === 'install') {
-    console.log('Extension installed - opening welcome page');
     chrome.tabs.create({
       url: chrome.runtime.getURL('welcome.html')
     });

@@ -348,13 +348,11 @@
 
         // Get Started button - opens trial page
         document.getElementById('get-started-btn').addEventListener('click', () => {
-            console.log('Starting free trial...');
             extpay.openTrialPage();
         });
 
         // Maybe Later button - just closes the tab
         document.getElementById('maybe-later-btn').addEventListener('click', () => {
-            console.log('User chose maybe later');
             window.close();
         });
 

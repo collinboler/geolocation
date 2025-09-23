@@ -5,15 +5,15 @@
     "description": "AI-powered location analysis for GeoGuessr. Analyzes screenshots to provide precise geographic coordinates and location predictions.",
     "permissions": [    
       "storage",     
-      "sidePanel",    
-      "tabs",          
-      "scripting"  
+      "sidePanel",  
+      "scripting",  
+      "tabs"
     ],
     "host_permissions": [
-        "<all_urls>"
+      "<all_urls>"
     ],
     "content_security_policy": {
-        "extension_pages": "script-src 'self'; connect-src 'self' https://extensionpay.com https://us-central1-geoguesser-hacker-ext.cloudfunctions.net; frame-src https://www.google.com/maps/embed/; object-src 'self'"
+        "extension_pages": "script-src 'self'; connect-src 'self' https://extensionpay.com https://us-central1-geoguesser-hacker-ext.cloudfunctions.net; object-src 'self'"
     },
    
     "action" : {
@@ -35,11 +35,6 @@
     "content_scripts": [
       {
         "matches": ["https://extensionpay.com/*"],
-        "js": ["extpay.js"],
-        "run_at": "document_start"
-      },
-      {
-        "matches": ["http://*/", "https://*/"],
         "js": ["extpay.js"],
         "run_at": "document_start"
       }
