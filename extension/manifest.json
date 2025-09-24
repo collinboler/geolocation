@@ -1,7 +1,7 @@
 {
     "manifest_version": 3,
     "name": "GeoGuesser Hacker",
-    "version": "0.4",
+    "version": "0.6",
     "description": "AI-powered location analysis for GeoGuessr. Uses hierarchical StreetCLIP prediction (country→region→city) for enhanced accuracy and precise coordinates.",
     "permissions": [    
       "storage",     

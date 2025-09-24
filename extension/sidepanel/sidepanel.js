@@ -933,26 +933,92 @@ async function processImage(dataUrl) {
       const hierarchy = result.hierarchy;
       
       if (confidencePercentage > 0) {
-        // Create styled confidence display
-        const confidenceColor = confidencePercentage >= 80 ? '#4CAF50' : confidencePercentage >= 60 ? '#FF9800' : '#FF5722';
+        let confidenceHTML = '';
         
-        let hierarchyInfo = '';
         if (hierarchy && serviceUsed.includes('Hierarchical')) {
-          // Add hierarchy breadcrumb for hierarchical predictions
-          hierarchyInfo = `
-            <div style="font-size: 12px; color: #666; margin-top: 4px;">
-              🏗️ ${hierarchy.country.name} → ${hierarchy.region.name} → ${hierarchy.city.name.split(',')[0]}
+          // Clean hierarchical display with individual confidence indicators (no emojis)
+          const countryConfidence = Math.round((hierarchy.country.confidence || 0) * 100);
+          const regionConfidence = Math.round((hierarchy.region.confidence || 0) * 100);
+          const cityConfidence = Math.round((hierarchy.city.confidence || 0) * 100);
+          
+          // Color coding function based on confidence level
+          const getConfidenceColor = (confidence) => {
+            if (confidence >= 80) return '#4CAF50'; // Green
+            if (confidence >= 60) return '#FF9800'; // Orange  
+            if (confidence >= 40) return '#FFC107'; // Yellow
+            return '#FF5722'; // Red
+          };
+          
+          const getConfidenceIndicator = (confidence) => {
+            if (confidence >= 80) return '●'; // High
+            if (confidence >= 60) return '●'; // Medium
+            if (confidence >= 40) return '●'; // Low-medium
+            return '●'; // Low
+          };
+          
+          const countryColor = getConfidenceColor(countryConfidence);
+          const regionColor = getConfidenceColor(regionConfidence);
+          const cityColor = getConfidenceColor(cityConfidence);
+          
+          const countryIndicator = getConfidenceIndicator(countryConfidence);
+          const regionIndicator = getConfidenceIndicator(regionConfidence);
+          const cityIndicator = getConfidenceIndicator(cityConfidence);
+          
+          confidenceHTML = `
+            <div style="line-height: 1.6;">
+              <div style="font-size: 16px; font-weight: 600; margin-bottom: 8px;">
+                ${locationData.description}
+              </div>
+              <div style="font-size: 14px; color: #666; margin-bottom: 6px;">
+                <span>Hierarchical Prediction:</span>
+              </div>
+              <div style="font-size: 13px; display: flex; flex-direction: column; gap: 3px;">
+                <div style="display: flex; align-items: center; cursor: pointer; padding: 2px 0;" 
+                     title="Click to show country confidence: ${countryConfidence}%"
+                     onmouseover="this.style.backgroundColor='rgba(0,0,0,0.05)'"
+                     onmouseout="this.style.backgroundColor='transparent'"
+                     onclick="var detail = this.querySelector('.confidence-detail'); detail.style.display = detail.style.display === 'none' || detail.style.display === '' ? 'inline' : 'none';">
+                  <span style="color: ${countryColor}; font-size: 16px; width: 12px;">${countryIndicator}</span>
+                  <span style="color: ${countryColor}; font-weight: 600; margin-left: 6px;">Country: ${hierarchy.country.name}</span>
+                  <span class="confidence-detail" style="color: ${countryColor}; margin-left: 8px; font-size: 11px; display: none;">(${countryConfidence}%)</span>
+                </div>
+                <div style="display: flex; align-items: center; margin-left: 18px; cursor: pointer; padding: 2px 0;" 
+                     title="Click to show region confidence: ${regionConfidence}%"
+                     onmouseover="this.style.backgroundColor='rgba(0,0,0,0.05)'"
+                     onmouseout="this.style.backgroundColor='transparent'"
+                     onclick="var detail = this.querySelector('.confidence-detail'); detail.style.display = detail.style.display === 'none' || detail.style.display === '' ? 'inline' : 'none';">
+                  <span style="color: ${regionColor}; font-size: 14px; width: 10px;">${regionIndicator}</span>
+                  <span style="color: ${regionColor}; font-weight: 600; margin-left: 6px;">Region: ${hierarchy.region.name}</span>
+                  <span class="confidence-detail" style="color: ${regionColor}; margin-left: 8px; font-size: 11px; display: none;">(${regionConfidence}%)</span>
+                </div>
+                <div style="display: flex; align-items: center; margin-left: 36px; cursor: pointer; padding: 2px 0;" 
+                     title="Click to show city confidence: ${cityConfidence}%"
+                     onmouseover="this.style.backgroundColor='rgba(0,0,0,0.05)'"
+                     onmouseout="this.style.backgroundColor='transparent'"
+                     onclick="var detail = this.querySelector('.confidence-detail'); detail.style.display = detail.style.display === 'none' || detail.style.display === '' ? 'inline' : 'none';">
+                  <span style="color: ${cityColor}; font-size: 12px; width: 8px;">${cityIndicator}</span>
+                  <span style="color: ${cityColor}; font-weight: 600; margin-left: 6px;">City: ${hierarchy.city.name.split(',')[0]}</span>
+                  <span class="confidence-detail" style="color: ${cityColor}; margin-left: 8px; font-size: 11px; display: none;">(${cityConfidence}%)</span>
+                </div>
+              </div>
+              <div style="margin-top: 8px; padding: 6px 8px; background-color: rgba(76, 175, 80, 0.1); border-left: 3px solid #4CAF50; border-radius: 0 4px 4px 0;">
+                <span style="font-size: 12px; color: #4CAF50; font-weight: 600;">
+                  Overall Confidence: ${confidencePercentage}%
+                </span>
+              </div>
             </div>
+          `;
+        } else {
+          // Standard confidence display for non-hierarchical predictions
+          const confidenceColor = confidencePercentage >= 80 ? '#4CAF50' : confidencePercentage >= 60 ? '#FF9800' : '#FF5722';
+          confidenceHTML = `
+            ${locationData.description}
+            <span style="color: ${confidenceColor}; font-weight: 600; margin-left: 8px;">
+              ${confidencePercentage}% confidence
+            </span>
           `;
         }
         
-        const confidenceHTML = `
-          ${locationData.description}
-          <span style="color: ${confidenceColor}; font-weight: 600; margin-left: 8px;">
-            ${confidencePercentage}% confidence
-          </span>
-          ${hierarchyInfo}
-        `;
         document.getElementById('location-words').innerHTML = confidenceHTML;
       } else {
         document.getElementById('location-words').textContent = locationData.description;
