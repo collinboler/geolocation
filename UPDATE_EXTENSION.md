@@ -70,3 +70,6 @@ The Chrome extension now supports the new **Hierarchical StreetCLIP service** on
 ✅ Better prediction accuracy  
 
 The extension now uses the **real power of StreetCLIP** with hierarchical prediction!
+
+
+

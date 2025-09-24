@@ -48,3 +48,6 @@ echo ""
 
 # Start the service
 python3 hierarchical_app.py
+
+
+

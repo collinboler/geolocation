@@ -359,8 +359,8 @@ document.addEventListener('DOMContentLoaded', () => {
     if (result.coords) {
       if (result.coords.lat && result.coords.lng) {
         // Legacy: coordinates format
-        coordsDiv.textContent = `${result.coords.lat}, ${result.coords.lng}`;
-        updateMapIframe(result.coords.lat, result.coords.lng, zoomLevel);
+      coordsDiv.textContent = `${result.coords.lat}, ${result.coords.lng}`;
+      updateMapIframe(result.coords.lat, result.coords.lng, zoomLevel);
       } else if (result.coords.locationName) {
         // New: location name format
         coordsDiv.textContent = result.coords.locationName;
@@ -800,18 +800,18 @@ async function processImage(dataUrl) {
     // Try hierarchical service first
     try {
       response = await fetch(`${hierarchicalServiceUrl}/processGeolocation`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          data: {
-            extpayUserId: extpayUserId,
-            imageData: dataUrl
-          }
-        })
-      });
-      
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        data: {
+          extpayUserId: extpayUserId,
+          imageData: dataUrl
+        }
+      })
+    });
+    
       serviceUsed = 'Hierarchical StreetCLIP (port 8082)';
       console.log('Hierarchical StreetCLIP response status:', response.status);
       
@@ -882,7 +882,7 @@ async function processImage(dataUrl) {
     
     // Update usage display immediately from response (if available)
     if (result.usage) {
-      updateUsageDisplay(result.usage);
+    updateUsageDisplay(result.usage);
     }
     
     // Also refresh usage from database after a short delay to ensure consistency
@@ -911,8 +911,8 @@ async function processImage(dataUrl) {
       updateMapIframeWithLocation(cleanLocationName, zoomLevel);
       
       // Show coordinates if available, but use location name for map
-      if (locationData.coordinates) {
-        document.getElementById('coords').textContent = `${locationData.coordinates.lat}, ${locationData.coordinates.lng}`;
+    if (locationData.coordinates) {
+      document.getElementById('coords').textContent = `${locationData.coordinates.lat}, ${locationData.coordinates.lng}`;
       } else {
         document.getElementById('coords').textContent = cleanLocationName;
       }
@@ -1021,7 +1021,7 @@ async function processImage(dataUrl) {
         
         document.getElementById('location-words').innerHTML = confidenceHTML;
       } else {
-        document.getElementById('location-words').textContent = locationData.description;
+      document.getElementById('location-words').textContent = locationData.description;
       }
     }
 
@@ -1114,7 +1114,7 @@ function updateZoomLevel(zoomLevel) {
       if (result.coords) {
         if (result.coords.lat && result.coords.lng) {
           // Legacy: coordinates format
-          updateMapIframe(result.coords.lat, result.coords.lng, zoomLevel);
+        updateMapIframe(result.coords.lat, result.coords.lng, zoomLevel);
         } else if (result.coords.locationName) {
           // New: location name format
           updateMapIframeWithLocation(result.coords.locationName, zoomLevel);

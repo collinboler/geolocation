@@ -137,3 +137,6 @@ if __name__ == "__main__":
     test_hierarchical_service()
     print("✅ Tests completed!")
     print("\n🌐 Visit http://localhost:8082/demo for interactive testing")
+
+
+
