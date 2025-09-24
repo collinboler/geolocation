@@ -787,17 +787,18 @@ async function processImage(dataUrl) {
     }
     
     
-    // Call local StreetCLIP service instead of Firebase/OpenAI
-    // Try hierarchical service first (8082), then fallback to basic service (8081)
+    // Call local geolocation services with fallback chain
+    // Try: Hierarchical StreetCLIP (8082) → Basic StreetCLIP (8081) → GeoCLIP (8083)
     const hierarchicalServiceUrl = 'http://localhost:8082';
     const basicServiceUrl = 'http://localhost:8081';
+    const geoclipServiceUrl = 'http://localhost:8083';
     
-    console.log('Attempting to connect to Hierarchical StreetCLIP service at:', hierarchicalServiceUrl);
+    console.log('Attempting to connect to services in order: Hierarchical StreetCLIP → Basic StreetCLIP → GeoCLIP');
     
     let response;
     let serviceUsed = '';
     
-    // Try hierarchical service first
+    // Try hierarchical StreetCLIP first
     try {
       response = await fetch(`${hierarchicalServiceUrl}/processGeolocation`, {
       method: 'POST',
@@ -816,9 +817,9 @@ async function processImage(dataUrl) {
       console.log('Hierarchical StreetCLIP response status:', response.status);
       
     } catch (hierarchicalError) {
-      console.log('Hierarchical service unavailable, trying basic service...', hierarchicalError.message);
+      console.log('Hierarchical StreetCLIP unavailable, trying basic StreetCLIP...', hierarchicalError.message);
       
-      // Fallback to basic service
+      // Fallback to basic StreetCLIP
       try {
         response = await fetch(`${basicServiceUrl}/processGeolocation`, {
           method: 'POST',
@@ -837,15 +838,34 @@ async function processImage(dataUrl) {
         console.log('Basic StreetCLIP response status:', response.status);
         
       } catch (basicError) {
-        console.error('Both services failed:', { hierarchicalError, basicError });
+        console.log('Basic StreetCLIP unavailable, trying GeoCLIP...', basicError.message);
         
-        // Restore button state
-        cameraIcon.style.display = 'inline';
-        buttonText.style.display = 'inline';
-        loadingSpinner.style.display = 'none';
-        
-        alert('Failed to connect to StreetCLIP services.\n\nPlease start one of the services:\n\nHierarchical (Recommended):\n1. cd backend/streetclip-service\n2. ./start_hierarchical.sh\n\nOr Basic:\n1. cd backend/streetclip-service\n2. ./start.sh');
-        return;
+        // Final fallback to GeoCLIP
+        try {
+          response = await fetch(`${geoclipServiceUrl}/processGeolocation`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              image: dataUrl.split(',')[1] // GeoCLIP expects base64 without data URL prefix
+            })
+          });
+          
+          serviceUsed = 'GeoCLIP (port 8083)';
+          console.log('GeoCLIP response status:', response.status);
+          
+        } catch (geoclipError) {
+          console.error('All services failed:', { hierarchicalError, basicError, geoclipError });
+          
+          // Restore button state
+          cameraIcon.style.display = 'inline';
+          buttonText.style.display = 'inline';
+          loadingSpinner.style.display = 'none';
+          
+          alert('Failed to connect to any geolocation services.\n\nPlease start one of the services:\n\n1. Hierarchical StreetCLIP (Recommended):\n   cd backend/streetclip-service && ./start_hierarchical.sh\n\n2. Basic StreetCLIP:\n   cd backend/streetclip-service && ./start.sh\n\n3. GeoCLIP:\n   cd backend/streetclip-service && ./start_geoclip.sh');
+          return;
+        }
       }
     }
     
@@ -902,26 +922,49 @@ async function processImage(dataUrl) {
       confidence: result.confidence
     };
     
-    // Use location name for map instead of coordinates for better accuracy
-    if (locationData.description) {
-      // Extract a clean location name for Google Maps
-      const cleanLocationName = locationData.description.replace(/^(This image was taken in |This is |Located in )/i, '').trim();
-      
-      // Update map with location name instead of coordinates
-      updateMapIframeWithLocation(cleanLocationName, zoomLevel);
-      
-      // Show coordinates if available, but use location name for map
-    if (locationData.coordinates) {
-      document.getElementById('coords').textContent = `${locationData.coordinates.lat}, ${locationData.coordinates.lng}`;
-      } else {
-        document.getElementById('coords').textContent = cleanLocationName;
+    // Handle GeoCLIP's different response format if needed
+    if (serviceUsed.includes('GeoCLIP')) {
+      console.log('🔬 Using GeoCLIP - Direct coordinate prediction');
+      // GeoCLIP returns coordinates directly, so format the description for display
+      if (result.coordinates && !result.location.includes('GeoCLIP')) {
+        locationData.description = `GeoCLIP Prediction: ${result.coordinates.lat.toFixed(6)}, ${result.coordinates.lng.toFixed(6)}`;
       }
-      
-      // Save to storage
-      chrome.storage.local.set({
-        coords: locationData.coordinates || { locationName: cleanLocationName },
-        locationWords: locationData.description
-      });
+    }
+    
+    // Handle map updates based on service type
+    if (locationData.description) {
+      // For GeoCLIP, use precise coordinates for the map
+      if (serviceUsed.includes('GeoCLIP') && locationData.coordinates) {
+        console.log('🗺️ Using GeoCLIP coordinates for map:', locationData.coordinates);
+        // Use coordinates directly for GeoCLIP since they're more precise
+        updateMapIframe(locationData.coordinates.lat, locationData.coordinates.lng, zoomLevel);
+        document.getElementById('coords').textContent = `${locationData.coordinates.lat}, ${locationData.coordinates.lng}`;
+        
+        // Save coordinates to storage
+        chrome.storage.local.set({
+          coords: locationData.coordinates,
+          locationWords: locationData.description
+        });
+      } else {
+        // For StreetCLIP services, use location name for better accuracy
+        const cleanLocationName = locationData.description.replace(/^(This image was taken in |This is |Located in )/i, '').trim();
+        
+        // Update map with location name instead of coordinates
+        updateMapIframeWithLocation(cleanLocationName, zoomLevel);
+        
+        // Show coordinates if available, but use location name for map
+        if (locationData.coordinates) {
+          document.getElementById('coords').textContent = `${locationData.coordinates.lat}, ${locationData.coordinates.lng}`;
+        } else {
+          document.getElementById('coords').textContent = cleanLocationName;
+        }
+        
+        // Save to storage
+        chrome.storage.local.set({
+          coords: locationData.coordinates || { locationName: cleanLocationName },
+          locationWords: locationData.description
+        });
+      }
     }
     
     if (locationData.description) {
@@ -1004,6 +1047,29 @@ async function processImage(dataUrl) {
               <div style="margin-top: 8px; padding: 6px 8px; background-color: rgba(76, 175, 80, 0.1); border-left: 3px solid #4CAF50; border-radius: 0 4px 4px 0;">
                 <span style="font-size: 12px; color: #4CAF50; font-weight: 600;">
                   Overall Confidence: ${confidencePercentage}%
+                </span>
+              </div>
+            </div>
+          `;
+        } else if (serviceUsed.includes('GeoCLIP')) {
+          // GeoCLIP-specific display with coordinate emphasis
+          const confidenceColor = confidencePercentage >= 80 ? '#4CAF50' : confidencePercentage >= 60 ? '#FF9800' : '#FF5722';
+          confidenceHTML = `
+            <div style="line-height: 1.6;">
+              <div style="font-size: 16px; font-weight: 600; margin-bottom: 8px;">
+                ${locationData.description}
+              </div>
+              <div style="font-size: 14px; color: #666; margin-bottom: 6px;">
+                <span>🔬 GeoCLIP Direct Coordinate Prediction:</span>
+              </div>
+              <div style="margin-top: 8px; padding: 6px 8px; background-color: rgba(33, 150, 243, 0.1); border-left: 3px solid #2196F3; border-radius: 0 4px 4px 0;">
+                <span style="font-size: 12px; color: #2196F3; font-weight: 600;">
+                  Coordinates: ${result.coordinates.lat.toFixed(6)}, ${result.coordinates.lng.toFixed(6)}
+                </span>
+              </div>
+              <div style="margin-top: 4px; padding: 6px 8px; background-color: rgba(76, 175, 80, 0.1); border-left: 3px solid #4CAF50; border-radius: 0 4px 4px 0;">
+                <span style="font-size: 12px; color: #4CAF50; font-weight: 600;">
+                  Confidence: ${confidencePercentage}%
                 </span>
               </div>
             </div>
