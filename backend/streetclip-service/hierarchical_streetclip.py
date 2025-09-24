@@ -14,6 +14,11 @@ import json
 import math
 from typing import Dict, List, Tuple, Optional
 import time
+from comprehensive_locations import (
+    COMPREHENSIVE_LOCATIONS, get_all_countries, get_regions_for_country,
+    get_cities_for_country, get_country_description, get_cities_for_region,
+    get_location_stats
+)
 
 logger = logging.getLogger(__name__)
 
@@ -28,71 +33,14 @@ class HierarchicalStreetCLIP:
         self.load_location_hierarchies()
         
     def load_location_hierarchies(self):
-        """Load hierarchical location data: countries -> regions -> cities -> coordinates"""
+        """Load comprehensive hierarchical location data from the global database"""
         
-        # Countries with their major regions
-        self.countries = {
-            "United States": {
-                "regions": ["California", "New York", "Texas", "Florida", "Illinois", "Pennsylvania", "Ohio", "Georgia", "North Carolina", "Michigan"],
-                "description": "United States of America"
-            },
-            "Canada": {
-                "regions": ["Ontario", "Quebec", "British Columbia", "Alberta", "Manitoba", "Saskatchewan"],
-                "description": "Canada"
-            },
-            "United Kingdom": {
-                "regions": ["England", "Scotland", "Wales", "Northern Ireland"],
-                "description": "United Kingdom, Great Britain"
-            },
-            "Germany": {
-                "regions": ["Bavaria", "North Rhine-Westphalia", "Baden-Württemberg", "Lower Saxony", "Hesse", "Berlin"],
-                "description": "Germany, Deutschland"
-            },
-            "France": {
-                "regions": ["Île-de-France", "Provence-Alpes-Côte d'Azur", "Auvergne-Rhône-Alpes", "Occitanie", "Hauts-de-France", "Grand Est"],
-                "description": "France, République française"
-            },
-            "Japan": {
-                "regions": ["Kantō", "Kansai", "Chūbu", "Kyushu", "Tōhoku", "Chūgoku"],
-                "description": "Japan, Nippon, Nihon"
-            },
-            "Australia": {
-                "regions": ["New South Wales", "Victoria", "Queensland", "Western Australia", "South Australia", "Tasmania"],
-                "description": "Australia"
-            },
-            "Brazil": {
-                "regions": ["São Paulo", "Rio de Janeiro", "Minas Gerais", "Bahia", "Paraná", "Rio Grande do Sul"],
-                "description": "Brazil, Brasil"
-            },
-            "India": {
-                "regions": ["Maharashtra", "Tamil Nadu", "Karnataka", "Gujarat", "Rajasthan", "West Bengal"],
-                "description": "India, Bharat"
-            },
-            "China": {
-                "regions": ["Beijing", "Shanghai", "Guangdong", "Jiangsu", "Shandong", "Zhejiang"],
-                "description": "China, People's Republic of China"
-            },
-            "Russia": {
-                "regions": ["Moscow Oblast", "Saint Petersburg", "Krasnodar Krai", "Sverdlovsk Oblast", "Rostov Oblast", "Tatarstan"],
-                "description": "Russia, Russian Federation"
-            },
-            "Mexico": {
-                "regions": ["Mexico City", "Jalisco", "Nuevo León", "Puebla", "Guanajuato", "Veracruz"],
-                "description": "Mexico, México"
-            },
-            "Italy": {
-                "regions": ["Lombardy", "Lazio", "Campania", "Sicily", "Veneto", "Emilia-Romagna"],
-                "description": "Italy, Italia"
-            },
-            "Spain": {
-                "regions": ["Madrid", "Catalonia", "Andalusia", "Valencia", "Galicia", "Castile and León"],
-                "description": "Spain, España"
-            },
-            "South Korea": {
-                "regions": ["Seoul", "Busan", "Gyeonggi", "Incheon", "Daegu", "Daejeon"],
-                "description": "South Korea, Republic of Korea"
-            }
-        }
+        # Load all data from comprehensive locations database
+        self.countries = COMPREHENSIVE_LOCATIONS
+        
+        # Get statistics about the loaded database
+        stats = get_location_stats()
+        logger.info(f"Loading comprehensive location database: {stats['countries']} countries, {stats['regions']} regions, {stats['cities']} cities")
         
         # Detailed city mappings with precise coordinates
         self.city_coordinates = {
@@ -205,20 +153,14 @@ class HierarchicalStreetCLIP:
         for country, data in self.countries.items():
             self.country_to_regions[country] = data["regions"]
             for region in data["regions"]:
-                self.region_to_cities[f"{region}, {country}"] = []
-                
-        # Populate region_to_cities mapping
-        for city_full, coords in self.city_coordinates.items():
-            parts = city_full.split(", ")
-            if len(parts) >= 3:
-                city = parts[0]
-                region = parts[1]
-                country = parts[2]
                 region_key = f"{region}, {country}"
-                if region_key in self.region_to_cities:
-                    self.region_to_cities[region_key].append(city_full)
+                # Get cities for this specific region using the comprehensive database
+                region_cities = get_cities_for_region(country, region)
+                self.region_to_cities[region_key] = [
+                    f"{city}, {region}, {country}" for city in region_cities
+                ]
         
-        logger.info(f"Loaded {len(self.countries)} countries, {len(self.city_coordinates)} cities")
+        logger.info(f"Loaded comprehensive database: {len(self.countries)} countries, {len(self.region_to_cities)} region mappings")
         
     def load_model(self):
         """Load the StreetCLIP model and processor"""
@@ -267,44 +209,46 @@ class HierarchicalStreetCLIP:
             raise
     
     def predict_country(self, image: Image.Image) -> Tuple[str, float]:
-        """Step 1: Predict country"""
+        """Step 1: Predict country using comprehensive database"""
         logger.info("Predicting country...")
         
         # Create comprehensive country descriptions
         country_choices = []
-        for country, data in self.countries.items():
-            country_choices.append(f"This image was taken in {data['description']}")
+        for country in get_all_countries():
+            description = get_country_description(country)
+            country_choices.append(f"This image was taken in {description}")
         
-        results = self.classify_with_clip(image, country_choices, top_k=3)
+        results = self.classify_with_clip(image, country_choices, top_k=5)
         
         # Extract country name from the top result
         top_choice = results[0][0]
         confidence = results[0][1]
         
         # Find the corresponding country
-        for country, data in self.countries.items():
-            if data['description'] in top_choice:
+        all_countries = get_all_countries()
+        for country in all_countries:
+            description = get_country_description(country)
+            if description in top_choice:
                 logger.info(f"Predicted country: {country} (confidence: {confidence:.3f})")
                 return country, confidence
                 
-        # Fallback
-        return list(self.countries.keys())[0], confidence
+        # Fallback to first country
+        return all_countries[0], confidence
     
     def predict_region(self, image: Image.Image, country: str) -> Tuple[str, float]:
-        """Step 2: Predict region within country"""
+        """Step 2: Predict region within country using comprehensive database"""
         logger.info(f"Predicting region within {country}...")
         
-        if country not in self.countries:
+        regions = get_regions_for_country(country)
+        if not regions:
             return "", 0.0
-            
-        regions = self.countries[country]["regions"]
         
         # Create region descriptions
         region_choices = []
         for region in regions:
             region_choices.append(f"This image was taken in {region}, {country}")
         
-        results = self.classify_with_clip(image, region_choices, top_k=3)
+        results = self.classify_with_clip(image, region_choices, top_k=min(5, len(regions)))
         
         # Extract region name from the top result
         top_choice = results[0][0]
@@ -319,46 +263,51 @@ class HierarchicalStreetCLIP:
         return regions[0], confidence
     
     def predict_city(self, image: Image.Image, region: str, country: str) -> Tuple[str, float, Dict]:
-        """Step 3: Predict city within region and get coordinates"""
+        """Step 3: Predict city within region using comprehensive database"""
         logger.info(f"Predicting city within {region}, {country}...")
         
-        region_key = f"{region}, {country}"
+        # Get cities for this region from comprehensive database
+        region_cities = get_cities_for_region(country, region)
         
-        if region_key not in self.region_to_cities:
+        if not region_cities:
             # Fallback: use all cities in the country
-            candidate_cities = [city for city in self.city_coordinates.keys() if country in city]
-        else:
-            candidate_cities = self.region_to_cities[region_key]
+            region_cities = get_cities_for_country(country)[:20]  # Limit to top 20 for performance
         
-        if not candidate_cities:
-            # Ultimate fallback: pick a major city in the country
+        if not region_cities:
+            # Ultimate fallback
             fallback_coords = {"lat": 0, "lng": 0}
             return f"Unknown City, {region}, {country}", 0.0, fallback_coords
         
         # Create city descriptions
         city_choices = []
-        for city_full in candidate_cities:
-            city_name = city_full.split(", ")[0]
+        for city_name in region_cities:
             city_choices.append(f"This image was taken in {city_name}, {region}, {country}")
         
-        results = self.classify_with_clip(image, city_choices, top_k=3)
+        # Limit the number of choices for performance
+        max_choices = min(15, len(city_choices))
+        city_choices = city_choices[:max_choices]
+        region_cities = region_cities[:max_choices]
         
-        # Find the best matching city and its coordinates
+        results = self.classify_with_clip(image, city_choices, top_k=min(5, len(city_choices)))
+        
+        # Find the best matching city
         top_choice = results[0][0]
         confidence = results[0][1]
         
-        # Extract city from the description and find coordinates
-        for city_full in candidate_cities:
-            city_name = city_full.split(", ")[0]
+        # Extract city from the description
+        for i, city_name in enumerate(region_cities):
             if city_name in top_choice:
-                coordinates = self.city_coordinates[city_full]
+                city_full = f"{city_name}, {region}, {country}"
+                # Try to get coordinates from our mapping, or use default
+                coordinates = self.city_coordinates.get(city_full, {"lat": 0, "lng": 0})
                 logger.info(f"Predicted city: {city_full} (confidence: {confidence:.3f})")
                 return city_full, confidence, coordinates
         
         # Fallback to first city
-        first_city = candidate_cities[0]
-        coordinates = self.city_coordinates[first_city]
-        return first_city, confidence, coordinates
+        first_city = region_cities[0]
+        city_full = f"{first_city}, {region}, {country}"
+        coordinates = self.city_coordinates.get(city_full, {"lat": 0, "lng": 0})
+        return city_full, confidence, coordinates
     
     def predict_location_hierarchical(self, image: Image.Image) -> Dict:
         """Main hierarchical prediction method"""
@@ -415,11 +364,21 @@ class HierarchicalStreetCLIP:
             # Try to find coordinates for the predicted location
             coordinates = {"lat": 0, "lng": 0}  # Default fallback
             
-            # Attempt to match with known cities
+            # Attempt to match with known cities from comprehensive database
             for city_full, coords in self.city_coordinates.items():
                 if any(part.lower() in top_location.lower() for part in city_full.split(", ")):
                     coordinates = coords
                     break
+            
+            # Also try to match with comprehensive database cities
+            if coordinates == {"lat": 0, "lng": 0}:
+                for country in get_all_countries():
+                    country_cities = get_cities_for_country(country)
+                    for city in country_cities:
+                        if city.lower() in top_location.lower():
+                            # Use the location name directly since we don't have precise coordinates
+                            # The frontend will use Google Maps with the location name
+                            break
             
             processing_time = time.time() - start_time
             

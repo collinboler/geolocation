@@ -357,23 +357,26 @@ document.addEventListener('DOMContentLoaded', () => {
       locationWordsDiv.textContent = `${result.locationWords}`;
     }
     if (result.coords) {
-      coordsDiv.textContent = `${result.coords.lat}, ${result.coords.lng}`;
-      updateMapIframe(result.coords.lat, result.coords.lng, zoomLevel);
+      if (result.coords.lat && result.coords.lng) {
+        // Legacy: coordinates format
+        coordsDiv.textContent = `${result.coords.lat}, ${result.coords.lng}`;
+        updateMapIframe(result.coords.lat, result.coords.lng, zoomLevel);
+      } else if (result.coords.locationName) {
+        // New: location name format
+        coordsDiv.textContent = result.coords.locationName;
+        updateMapIframeWithLocation(result.coords.locationName, zoomLevel);
+      }
     } else {
       // Default to Nassau Princeton NJ if no saved coordinates
-      const defaultCoords = {
-        lat: 40.348600,
-        lng: -74.659300
-      };
       const defaultLocation = "Nassau Hall, Princeton, New Jersey, United States";
       
       locationWordsDiv.textContent = defaultLocation;
-      coordsDiv.textContent = `${defaultCoords.lat}, ${defaultCoords.lng}`;
-      updateMapIframe(defaultCoords.lat, defaultCoords.lng, zoomLevel);
+      coordsDiv.textContent = defaultLocation;
+      updateMapIframeWithLocation(defaultLocation, zoomLevel);
       
-      // Save default values to storage
+      // Save default values to storage (using new location name format)
       chrome.storage.local.set({
-        coords: defaultCoords,
+        coords: { locationName: defaultLocation },
         locationWords: defaultLocation
       });
     }
@@ -899,13 +902,24 @@ async function processImage(dataUrl) {
       confidence: result.confidence
     };
     
-    if (locationData.coordinates) {
-      document.getElementById('coords').textContent = `${locationData.coordinates.lat}, ${locationData.coordinates.lng}`;
-      updateMapIframe(locationData.coordinates.lat, locationData.coordinates.lng, zoomLevel);
+    // Use location name for map instead of coordinates for better accuracy
+    if (locationData.description) {
+      // Extract a clean location name for Google Maps
+      const cleanLocationName = locationData.description.replace(/^(This image was taken in |This is |Located in )/i, '').trim();
+      
+      // Update map with location name instead of coordinates
+      updateMapIframeWithLocation(cleanLocationName, zoomLevel);
+      
+      // Show coordinates if available, but use location name for map
+      if (locationData.coordinates) {
+        document.getElementById('coords').textContent = `${locationData.coordinates.lat}, ${locationData.coordinates.lng}`;
+      } else {
+        document.getElementById('coords').textContent = cleanLocationName;
+      }
       
       // Save to storage
       chrome.storage.local.set({
-        coords: locationData.coordinates,
+        coords: locationData.coordinates || { locationName: cleanLocationName },
         locationWords: locationData.description
       });
     }
@@ -1018,12 +1032,27 @@ function updateMapIframe(lat, lng, zoomLevel) {
   mapIframe.src = mapUrl;
 }
 
+function updateMapIframeWithLocation(locationName, zoomLevel) {
+  const mapIframe = document.getElementById('map-iframe');
+  // Encode the location name for URL
+  const encodedLocation = encodeURIComponent(locationName);
+  const mapUrl = `https://www.google.com/maps/embed/v1/place?key=AIzaSyBFw0Qbyq9zTFTd-tUY6dZWTgaQzuU17R8&q=${encodedLocation}&zoom=${zoomLevel}`;
+  mapIframe.src = mapUrl;
+  console.log(`📍 Updated map to show: ${locationName}`);
+}
+
 function updateZoomLevel(zoomLevel) {
   chrome.storage.local.set({ zoomLevel: zoomLevel }, () => {
-    // Update map if coordinates exist
+    // Update map with new zoom level
     chrome.storage.local.get(['coords'], (result) => {
       if (result.coords) {
-        updateMapIframe(result.coords.lat, result.coords.lng, zoomLevel);
+        if (result.coords.lat && result.coords.lng) {
+          // Legacy: coordinates format
+          updateMapIframe(result.coords.lat, result.coords.lng, zoomLevel);
+        } else if (result.coords.locationName) {
+          // New: location name format
+          updateMapIframeWithLocation(result.coords.locationName, zoomLevel);
+        }
       }
     });
   });
