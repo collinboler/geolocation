@@ -785,12 +785,18 @@ async function processImage(dataUrl) {
     
     
     // Call local StreetCLIP service instead of Firebase/OpenAI
-    const localServiceUrl = 'http://localhost:8081';
-    console.log('Attempting to connect to StreetCLIP service at:', localServiceUrl);
+    // Try hierarchical service first (8082), then fallback to basic service (8081)
+    const hierarchicalServiceUrl = 'http://localhost:8082';
+    const basicServiceUrl = 'http://localhost:8081';
+    
+    console.log('Attempting to connect to Hierarchical StreetCLIP service at:', hierarchicalServiceUrl);
     
     let response;
+    let serviceUsed = '';
+    
+    // Try hierarchical service first
     try {
-      response = await fetch(`${localServiceUrl}/processGeolocation`, {
+      response = await fetch(`${hierarchicalServiceUrl}/processGeolocation`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -803,17 +809,41 @@ async function processImage(dataUrl) {
         })
       });
       
-      console.log('StreetCLIP response status:', response.status);
-    } catch (fetchError) {
-      console.error('Fetch error details:', fetchError);
+      serviceUsed = 'Hierarchical StreetCLIP (port 8082)';
+      console.log('Hierarchical StreetCLIP response status:', response.status);
       
-      // Restore button state
-      cameraIcon.style.display = 'inline';
-      buttonText.style.display = 'inline';
-      loadingSpinner.style.display = 'none';
+    } catch (hierarchicalError) {
+      console.log('Hierarchical service unavailable, trying basic service...', hierarchicalError.message);
       
-      alert('Failed to connect to local StreetCLIP service. Please make sure it\'s running on port 8081.\n\nTo start the service:\n1. Open Terminal\n2. cd backend/streetclip-service\n3. ./start.sh');
-      return;
+      // Fallback to basic service
+      try {
+        response = await fetch(`${basicServiceUrl}/processGeolocation`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            data: {
+              extpayUserId: extpayUserId,
+              imageData: dataUrl
+            }
+          })
+        });
+        
+        serviceUsed = 'Basic StreetCLIP (port 8081)';
+        console.log('Basic StreetCLIP response status:', response.status);
+        
+      } catch (basicError) {
+        console.error('Both services failed:', { hierarchicalError, basicError });
+        
+        // Restore button state
+        cameraIcon.style.display = 'inline';
+        buttonText.style.display = 'inline';
+        loadingSpinner.style.display = 'none';
+        
+        alert('Failed to connect to StreetCLIP services.\n\nPlease start one of the services:\n\nHierarchical (Recommended):\n1. cd backend/streetclip-service\n2. ./start_hierarchical.sh\n\nOr Basic:\n1. cd backend/streetclip-service\n2. ./start.sh');
+        return;
+      }
     }
     
 
@@ -838,7 +868,14 @@ async function processImage(dataUrl) {
     const data = await response.json();
     const result = data.result;
     
-    console.log('Received result:', result);
+    console.log(`Received result from ${serviceUsed}:`, result);
+    
+    // Show which service was used
+    if (serviceUsed.includes('Hierarchical')) {
+      console.log('🏗️ Using Hierarchical StreetCLIP - Enhanced accuracy with country→region→city prediction');
+    } else {
+      console.log('🔧 Using Basic StreetCLIP - Standard city classification');
+    }
     
     // Update usage display immediately from response (if available)
     if (result.usage) {
@@ -878,14 +915,29 @@ async function processImage(dataUrl) {
       const confidence = locationData.confidence || 0;
       const confidencePercentage = Math.round(confidence * 100);
       
+      // Check if we have hierarchy information from the hierarchical service
+      const hierarchy = result.hierarchy;
+      
       if (confidencePercentage > 0) {
         // Create styled confidence display
         const confidenceColor = confidencePercentage >= 80 ? '#4CAF50' : confidencePercentage >= 60 ? '#FF9800' : '#FF5722';
+        
+        let hierarchyInfo = '';
+        if (hierarchy && serviceUsed.includes('Hierarchical')) {
+          // Add hierarchy breadcrumb for hierarchical predictions
+          hierarchyInfo = `
+            <div style="font-size: 12px; color: #666; margin-top: 4px;">
+              🏗️ ${hierarchy.country.name} → ${hierarchy.region.name} → ${hierarchy.city.name.split(',')[0]}
+            </div>
+          `;
+        }
+        
         const confidenceHTML = `
           ${locationData.description}
           <span style="color: ${confidenceColor}; font-weight: 600; margin-left: 8px;">
             ${confidencePercentage}% confidence
           </span>
+          ${hierarchyInfo}
         `;
         document.getElementById('location-words').innerHTML = confidenceHTML;
       } else {
