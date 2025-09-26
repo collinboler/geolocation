@@ -110,6 +110,11 @@ body {
     box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
 }
 
+.btn-primary:active {
+    transform: translateY(0px) scale(0.98);
+    transition: transform 0.1s ease;
+}
+
 .btn-secondary {
     background: white;
     color: var(--primary-green);

@@ -1,0 +1,25 @@
+User-agent: *
+Allow: /
+
+# Important pages
+Allow: /index.html
+Allow: /pricing.html
+Allow: /privacy.html
+Allow: /terms.html
+Allow: /contact.html
+
+# Static assets
+Allow: /css/
+Allow: /js/
+Allow: /images/
+
+# Block admin or sensitive areas (if any)
+Disallow: /admin/
+Disallow: /.git/
+Disallow: /deploy.sh
+
+# Sitemap location
+Sitemap: https://geoguesserhacker.com/sitemap.xml
+
+# Crawl delay (optional - be gentle)
+Crawl-delay: 1

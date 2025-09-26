@@ -35,33 +35,20 @@ document.addEventListener('DOMContentLoaded', function() {
     
     installButtons.forEach(button => {
         button.addEventListener('click', function(e) {
-            e.preventDefault();
+            // Add visual feedback to prevent seizure effect
+            button.style.transform = 'scale(0.95)';
+            button.style.transition = 'transform 0.1s ease';
             
-            // Check if Chrome extension is supported
-            if (typeof chrome !== 'undefined' && chrome.webstore) {
-                // Replace with your actual Chrome Web Store ID
-                const extensionId = 'ogjhgcaaaclhdaalliolbhibppalepkj';
-                
-                try {
-                    chrome.webstore.install(
-                        `https://chrome.google.com/webstore/detail/${extensionId}`,
-                        function() {
-                            showNotification('Extension installed successfully!', 'success');
-                        },
-                        function(error) {
-                            console.error('Installation failed:', error);
-                            // Fallback to opening Chrome Web Store
-                            window.open('https://chrome.google.com/webstore/detail/geoguesser-hacker/your-extension-id', '_blank');
-                        }
-                    );
-                } catch (error) {
-                    // Fallback for when not on Chrome Web Store
-                    window.open('https://chrome.google.com/webstore/detail/geoguesser-hacker/your-extension-id', '_blank');
-                }
-            } else {
-                // Not on Chrome or extension API not available
-                window.open('https://chrome.google.com/webstore/detail/geoguesser-hacker/your-extension-id', '_blank');
-            }
+            setTimeout(() => {
+                button.style.transform = 'scale(1)';
+            }, 100);
+            
+            // Track the install attempt
+            trackEvent('extension_install_clicked', {
+                source: 'website',
+                button_location: button.dataset.location || 'unknown',
+                plan: button.dataset.plan || 'none'
+            });
         });
     });
     
@@ -93,14 +80,16 @@ document.addEventListener('DOMContentLoaded', function() {
             button.addEventListener('click', function(e) {
                 const plan = this.getAttribute('data-plan');
                 
+                const chromeStoreUrl = 'https://chromewebstore.google.com/detail/geoguesser-hacker/ogjhgcaaaclhdaalliolbhibppalepkj?authuser=1&hl=en';
+                
                 if (plan === 'free') {
                     // Redirect to extension install
-                    window.open('https://chrome.google.com/webstore/detail/geoguesser-hacker/your-extension-id', '_blank');
+                    window.open(chromeStoreUrl, '_blank');
                 } else if (plan === 'pro') {
                     // This would typically integrate with your payment system
                     showNotification('Install the extension first to upgrade to Pro!', 'info');
                     setTimeout(() => {
-                        window.open('https://chrome.google.com/webstore/detail/geoguesser-hacker/your-extension-id', '_blank');
+                        window.open(chromeStoreUrl, '_blank');
                     }, 2000);
                 }
             });

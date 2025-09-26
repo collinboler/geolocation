@@ -784,8 +784,25 @@ async function processImage(dataUrl) {
     }
     
     
+<<<<<<< Updated upstream
     // Call Firebase Function instead of OpenAI directly
     const response = await fetch('https://us-central1-geoguesser-hacker-ext.cloudfunctions.net/processGeolocation', {
+=======
+    // Call geolocation services with fallback chain
+    // Try: Firebase GeoCLIP → Local GeoCLIP (8083) → Basic StreetCLIP (8081)
+    const firebaseGeoclipUrl = 'https://geoclip-api-4xswevyldq-uc.a.run.app';
+    const localGeoclipServiceUrl = 'http://localhost:8083';
+    const basicServiceUrl = 'http://localhost:8081';
+    
+    console.log('Attempting to connect to services in order: Firebase GeoCLIP → Local GeoCLIP → Basic StreetCLIP');
+    
+    let response;
+    let serviceUsed = '';
+    
+    // Try Firebase GeoCLIP first
+    try {
+      response = await fetch(`${firebaseGeoclipUrl}/processGeolocation`, {
+>>>>>>> Stashed changes
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -798,6 +815,65 @@ async function processImage(dataUrl) {
       })
     });
     
+<<<<<<< Updated upstream
+=======
+      serviceUsed = 'Firebase GeoCLIP';
+      console.log('Firebase GeoCLIP response status:', response.status);
+      
+    } catch (firebaseError) {
+      console.log('Firebase GeoCLIP unavailable, trying local GeoCLIP...', firebaseError.message);
+      
+      // Fallback to local GeoCLIP
+      try {
+        response = await fetch(`${localGeoclipServiceUrl}/processGeolocation`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            image: dataUrl.split(',')[1] // GeoCLIP expects base64 without data URL prefix
+          })
+        });
+        
+        serviceUsed = 'Local GeoCLIP (port 8083)';
+        console.log('Local GeoCLIP response status:', response.status);
+        
+      } catch (localGeoclipError) {
+        console.log('Local GeoCLIP unavailable, trying Basic StreetCLIP...', localGeoclipError.message);
+        
+        // Final fallback to Basic StreetCLIP
+        try {
+          response = await fetch(`${basicServiceUrl}/processGeolocation`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              data: {
+                extpayUserId: extpayUserId,
+                imageData: dataUrl
+              }
+            })
+          });
+          
+          serviceUsed = 'Basic StreetCLIP (port 8081)';
+          console.log('Basic StreetCLIP response status:', response.status);
+          
+        } catch (basicError) {
+          console.error('All services failed:', { firebaseError, localGeoclipError, basicError });
+          
+          // Restore button state
+          cameraIcon.style.display = 'inline';
+          buttonText.style.display = 'inline';
+          loadingSpinner.style.display = 'none';
+          
+          alert('Failed to connect to any geolocation services.\n\nPlease check:\n\n1. Firebase GeoCLIP is deployed and accessible\n2. Local GeoCLIP (port 8083):\n   cd geoclip && ./start_geoclip.sh\n\n3. Basic StreetCLIP (port 8081):\n   cd backend/streetclip-service && ./start.sh');
+          return;
+        }
+      }
+    }
+    
+>>>>>>> Stashed changes
 
     if (!response.ok) {
       const errorData = await response.json();
