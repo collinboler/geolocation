@@ -1,23 +1,18 @@
-# GeoGuesser Hacker Website - Apache Configuration
-
-# Enable mod_rewrite
+# Apache 301 Redirects - geoguesserhacker.com → geoguessrhack.com
 RewriteEngine On
 
-# Force HTTPS
+# Redirect www.geoguesserhacker.com to geoguessrhack.com
+RewriteCond %{HTTP_HOST} ^www\.geoguesserhacker\.com [NC]
+RewriteRule ^(.*)$ https://geoguessrhack.com/$1 [L,R=301]
+
+# Redirect geoguesserhacker.com to geoguessrhack.com
+RewriteCond %{HTTP_HOST} ^geoguesserhacker\.com [NC]
+RewriteRule ^(.*)$ https://geoguessrhack.com/$1 [L,R=301]
+
+# Force HTTPS on geoguessrhack.com
 RewriteCond %{HTTPS} off
-RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
-
-# Privacy policy redirect
-RewriteRule ^privacy/?$ /privacy.html [L,R=301]
-
-# Remove .html extension from URLs
-RewriteCond %{REQUEST_FILENAME} !-d
-RewriteCond %{REQUEST_FILENAME} !-f
-RewriteRule ^([^\.]+)$ $1.html [NC,L]
-
-# Remove .html extension from displayed URLs
-RewriteCond %{THE_REQUEST} /([^.]+)\.html [NC]
-RewriteRule ^ /%1 [NC,L,R=301]
+RewriteCond %{HTTP_HOST} ^geoguessrhack\.com [NC]
+RewriteRule ^(.*)$ https://geoguessrhack.com/$1 [L,R=301]
 
 # Security headers
 <IfModule mod_headers.c>
@@ -25,22 +20,9 @@ RewriteRule ^ /%1 [NC,L,R=301]
     Header always set X-Frame-Options DENY
     Header always set X-XSS-Protection "1; mode=block"
     Header always set Referrer-Policy "strict-origin-when-cross-origin"
-    Header always set Permissions-Policy "geolocation=(), microphone=(), camera=()"
 </IfModule>
 
-# Cache control
-<IfModule mod_expires.c>
-    ExpiresActive On
-    ExpiresByType text/css "access plus 1 month"
-    ExpiresByType application/javascript "access plus 1 month"
-    ExpiresByType image/png "access plus 1 month"
-    ExpiresByType image/jpg "access plus 1 month"
-    ExpiresByType image/jpeg "access plus 1 month"
-    ExpiresByType image/gif "access plus 1 month"
-    ExpiresByType image/svg+xml "access plus 1 month"
-</IfModule>
-
-# Compress files
+# Gzip compression
 <IfModule mod_deflate.c>
     AddOutputFilterByType DEFLATE text/plain
     AddOutputFilterByType DEFLATE text/html
@@ -53,6 +35,17 @@ RewriteRule ^ /%1 [NC,L,R=301]
     AddOutputFilterByType DEFLATE application/x-javascript
 </IfModule>
 
-# Custom error pages (optional)
-ErrorDocument 404 /404.html
-ErrorDocument 500 /500.html
+# Cache static files
+<IfModule mod_expires.c>
+    ExpiresActive On
+    ExpiresByType image/jpg "access plus 1 month"
+    ExpiresByType image/jpeg "access plus 1 month"
+    ExpiresByType image/gif "access plus 1 month"
+    ExpiresByType image/png "access plus 1 month"
+    ExpiresByType text/css "access plus 1 month"
+    ExpiresByType application/pdf "access plus 1 month"
+    ExpiresByType text/javascript "access plus 1 month"
+    ExpiresByType application/javascript "access plus 1 month"
+    ExpiresByType application/x-javascript "access plus 1 month"
+    ExpiresByType image/x-icon "access plus 1 year"
+</IfModule>

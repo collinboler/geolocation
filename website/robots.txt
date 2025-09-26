@@ -19,7 +19,7 @@ Disallow: /.git/
 Disallow: /deploy.sh
 
 # Sitemap location
-Sitemap: https://geoguesserhacker.com/sitemap.xml
+Sitemap: https://geoguessrhack.com/sitemap.xml
 
 # Crawl delay (optional - be gentle)
 Crawl-delay: 1
