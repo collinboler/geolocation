@@ -35,15 +35,7 @@ document.addEventListener('DOMContentLoaded', function() {
     
     installButtons.forEach(button => {
         button.addEventListener('click', function(e) {
-            // Add visual feedback to prevent seizure effect
-            button.style.transform = 'scale(0.95)';
-            button.style.transition = 'transform 0.1s ease';
-            
-            setTimeout(() => {
-                button.style.transform = 'scale(1)';
-            }, 100);
-            
-            // Track the install attempt
+            // Simple click tracking without animation to prevent seizure effect
             trackEvent('extension_install_clicked', {
                 source: 'website',
                 button_location: button.dataset.location || 'unknown',
@@ -80,7 +72,7 @@ document.addEventListener('DOMContentLoaded', function() {
             button.addEventListener('click', function(e) {
                 const plan = this.getAttribute('data-plan');
                 
-                const chromeStoreUrl = 'https://chromewebstore.google.com/detail/geoguesser-hacker/ogjhgcaaaclhdaalliolbhibppalepkj?authuser=1&hl=en';
+                const chromeStoreUrl = 'https://chromewebstore.google.com/detail/geoguesser-hacker/ogjhgcaaaclhdaalliolbhibppalepkj';
                 
                 if (plan === 'free') {
                     // Redirect to extension install

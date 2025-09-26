@@ -93,7 +93,7 @@ body {
     border-radius: 8px;
     font-weight: 600;
     text-decoration: none;
-    transition: all 0.3s ease;
+    transition: background-color 0.2s ease, box-shadow 0.2s ease;
     border: none;
     cursor: pointer;
     font-size: 16px;
@@ -106,13 +106,13 @@ body {
 }
 
 .btn-primary:hover {
-    transform: translateY(-2px);
+    background: linear-gradient(135deg, var(--secondary-green), var(--dark-green));
     box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
 }
 
 .btn-primary:active {
-    transform: translateY(0px) scale(0.98);
-    transition: transform 0.1s ease;
+    background: linear-gradient(135deg, var(--dark-green), var(--secondary-green));
+    box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
 }
 
 .btn-secondary {
