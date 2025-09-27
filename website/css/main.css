@@ -394,6 +394,73 @@ body {
     color: var(--gray-200);
 }
 
+/* Product Hunt Section */
+.product-hunt-section {
+    background: var(--gray-50);
+    padding: 60px 0;
+}
+
+.product-hunt-card {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 24px;
+}
+
+.product-hunt-card iframe {
+    border: none;
+    border-radius: 12px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.product-hunt-card iframe:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.16);
+}
+
+/* Responsive Product Hunt Card */
+@media (max-width: 768px) {
+    .product-hunt-card iframe {
+        width: 90vw;
+        max-width: 400px;
+        height: 320px;
+    }
+    
+    .product-hunt-section {
+        padding: 40px 0;
+    }
+}
+
+@media (max-width: 480px) {
+    .product-hunt-card iframe {
+        width: 95vw;
+        max-width: 350px;
+        height: 280px;
+    }
+}
+
+/* Header Product Hunt Badge */
+.nav-menu li img {
+    transition: transform 0.2s ease;
+}
+
+.nav-menu li img:hover {
+    transform: scale(1.05);
+}
+
+@media (max-width: 768px) {
+    .nav-menu li:last-child {
+        flex-direction: column;
+        gap: 8px;
+        align-items: center;
+    }
+    
+    .nav-menu li img {
+        width: 100px;
+        height: 22px;
+    }
+}
+
 /* Responsive Design */
 @media (max-width: 768px) {
     .nav-menu {
