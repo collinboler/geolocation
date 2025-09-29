@@ -73,3 +73,5 @@ fetch('/robots.txt')
     });
 
 console.log('🎯 Domain migration test complete! Check results above.');
+
+
